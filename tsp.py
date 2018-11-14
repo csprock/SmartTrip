@@ -136,6 +136,7 @@ def backwards_search(k, j, debug=False):
                         # adjust previous departure time
                         #t_d[i+1] -= slack_a[i]
 
+
                         remDuty_d[i] = remDuty_a[i]
                         remDrive_d[i] = remDrive_a[i]
                         t_d[i] = WINDOWS[i].l
@@ -292,5 +293,34 @@ print(nRests_between)
 
 # construct path
 # using nRests, t_d, t_a
+legs = list()
+
+T = t_d[6]
+
+i = 5
+
+if nRests_between[i] > 0:
+    legs.append(('drive', T - remDrive_d[i + 1], T))
+
+    T -= remDrive_d[i+1]
+    for rests in range(nRests_between[i]):
+        legs.append(('rest', T - 10, T))
+        T -= 10
+        legs.append(('drive', T - min(11, T - t_a[i]), T))
+        T -= min(T, T - t_a[i])
+
+else:
+    legs.append(('drive', t_a[i], T))
+    T -= T - t_a[i]
+
+if nRests[i] > 0:
+    legs.append(('rest', T - 10*nRests[i], T))
+    T -= 10*nRests[i]
+if t_d[i] < T:
+    legs.append(('wait', T - (t_a[i] - t_d[i]), T))
+    T -= t_a[i] - t_d[i]
+
+i -= 1
+print(i)
 
 
