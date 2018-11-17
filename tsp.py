@@ -1,3 +1,4 @@
+from array import array
 import math
 from utils import TW
 from copy import copy
@@ -21,6 +22,12 @@ slack_a = [None]*(len(T) + 1)
 slack_d = [None]*(len(T) + 1)
 wait = [0]*(len(T) + 1)
 tBest = [None]*(len(T) + 1)
+
+# declare "shadow" variables
+t_a_shadow = [None]*(len(T) + 1)
+t_d_shadow = [None]*(len(T) + 1)
+
+rest_push_end = int()
 
 def print_report(i):
 
@@ -95,18 +102,22 @@ def backwards_search(k, j, debug=False):
                                 remDuty_d[i] = DUTY
                                 remDrive_d[i] = DRIVE
                                 # adjust previous
-                                t_d[i + 1] -= slack_a[i]
+                                t_d_shadow[i + 1] = t_d[i+1] - slack_a[i]
+                                t_a_shadow[i] = t_a[i] - slack_a[i]
                         else:
                             t_d[i] = WINDOWS[i].l
                             slack_d[i] = min(t_d[i] - WINDOWS[i].l, (tBest[i] - (nRests[i]*REST + (nRests[i] - 1)*DUTY)))
                             remDuty_d[i] = DUTY
                             remDrive_d[i] = DRIVE
                             # adjust previous
-                            t_d[i+1] -= slack_a[i]
+                            t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
+                            t_a_shadow[i] = t_a[i] - slack_a[i]
 
                     else:
                         # adjust previous departure time
-                        t_d[i+1] -= slack_a[i]
+                        t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
+                        t_a_shadow[i] = t_a[i] - slack_a[i]
+
                         t_d[i] = WINDOWS[i].l
                         remDuty_d[i] = DUTY - ((tBest[i] - (nRests[i]*REST + (nRests[i] - 1)*DUTY)) - WINDOWS[i].l)
                         remDrive_d[i] = min(remDuty_d[i], DRIVE)
@@ -118,7 +129,8 @@ def backwards_search(k, j, debug=False):
                     # TODO: worked, check algo
                     if wait[i] > slack_a[i]:
                         # adjust previous departure time
-                        #t_d[i+1] -= slack_a[i]
+                        t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
+                        t_a_shadow[i] = t_a[i] - slack_a[i]
 
                         slack_d[i] = 0
                         remDuty_d[i] = remDuty_a[i] - (wait[i] - slack_a[i])#- wait[i] - slack_a[i]
@@ -134,7 +146,8 @@ def backwards_search(k, j, debug=False):
                         slack_d[i] = min(slack_a[i] - wait[i], WINDOWS[i].delta)
 
                         # adjust previous departure time
-                        #t_d[i+1] -= slack_a[i]
+                        t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
+                        t_a_shadow[i] = t_a[i] - slack_a[i]
 
 
                         remDuty_d[i] = remDuty_a[i]
@@ -208,7 +221,7 @@ def push_up_nearest_rest(i, j):
 
 def restore(i, debug=False):
 
-    global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest
+    global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest, rest_push_end
 
     N = 6 # for testing only
     for j in range(i+1, N):
@@ -221,6 +234,9 @@ def restore(i, debug=False):
             nRests[j] += 1
 
             push_up_nearest_rest(i, j)
+            rest_push_end = j
+            print("Rest push end: {}".format(rest_push_end))
+
 
 
             if t_a[j] - nRests[j]*REST >= WINDOWS[j].e:
@@ -285,14 +301,22 @@ def restore(i, debug=False):
 
 
 results = backwards_search(5,0, debug = False)
-status = restore(0, debug = False)
+#status = restore(0, debug = False)
+#print(rest_push_end)
+#print(nRests_between)
 
-print(nRests_between)
+# TODO: combine shadow with actual
 
+for i in range(rest_push_end + 1, 5):
+
+    if t_a_shadow[i] and t_d_shadow[i+1]:
+        t_a[i] = t_a_shadow[i]
+        t_d[i+1] = t_d_shadow[i+1]
 
 
 # construct path
 # using nRests, t_d, t_a
+
 legs = list()
 
 T = t_d[6]
@@ -306,6 +330,7 @@ if nRests_between[i] > 0:
     for rests in range(nRests_between[i]):
         legs.append(('rest', T - 10, T))
         T -= 10
+        print(T)
         legs.append(('drive', T - min(11, T - t_a[i]), T))
         T -= min(T, T - t_a[i])
 
@@ -321,6 +346,6 @@ if t_d[i] < T:
     T -= t_a[i] - t_d[i]
 
 i -= 1
-print(i)
+print(legs)
 
 
