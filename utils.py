@@ -44,7 +44,7 @@ def check_trip_sequence(seq):
     return True
 
 
-class TW:
+class TimeWindow:
 
     def __init__(self, e, l):
         
