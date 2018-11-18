@@ -1,33 +1,90 @@
 from array import array
 import math
-from utils import TW
+from utils import TimeWindow
 from copy import copy
 
-DRIVE = 11
-DUTY = 14
-REST = 10
 
-WINDOWS = (TW(10,15), TW(3,18), TW(10,18), TW(15,35), TW(40,45), TW(75, 100), TW(75,100))
-T = (6,2,4,10,10,15)
+class TripStats:
 
-nRests_between = [0]*len(T)
-nRests = [0]*(len(T) + 1)
-remDrive_a = [None]*(len(T) + 1)
-remDrive_d = [None]*(len(T) + 1)
-remDuty_a = [None]*(len(T) + 1)
-remDuty_d = [None]*(len(T) + 1)
-t_a = [None]*(len(T) + 1)
-t_d = [None]*(len(T) + 1)
-slack_a = [None]*(len(T) + 1)
-slack_d = [None]*(len(T) + 1)
-wait = [0]*(len(T) + 1)
-tBest = [None]*(len(T) + 1)
+    DRIVE = 11
+    DUTY = 14
+    REST = 10
 
-# declare "shadow" variables
-t_a_shadow = [None]*(len(T) + 1)
-t_d_shadow = [None]*(len(T) + 1)
+    def __init__(self, time_windows, travel_times):
 
-rest_push_end = int()
+        assert len(travel_times) == len(time_windows) - 1
+
+        self.WINDOWS = time_windows
+        self.TRAVEL_TIMES = travel_times
+
+        self.N_STOPS = len(time_windows)
+
+
+        self.nRests_between = array('h', (int(),)*(self.N_STOPS -1))  # number of rests between consecutive stops
+        self.nRests = array('h', (int(),)*self.N_STOPS)               # number of rests at each stop
+
+        self.remDrive_a = array('f', (float(),)*self.N_STOPS)
+        self.remDrive_d = array('f', (float(),)*self.N_STOPS)
+        self.remDuty_a = array('f', (float(),)*self.N_STOPS)
+        self.remDuty_d = array('f', (float(),)*self.N_STOPS)
+
+        self.t_a = array('f', (float(),)*self.N_STOPS)
+        self.t_d = array('f', (float(),)*self.N_STOPS)
+
+        self.t_a_shadow = array('f', (float(),)*self.N_STOPS)
+        self.t_d_shadow = array('f', (float(),)*self.N_STOPS)
+
+        self.slack_a = array('f', (float(),)*self.N_STOPS)
+        self.slack_d = array('f', (float(),)*self.N_STOPS)
+
+        self.wait = array('f', (float(),)*self.N_STOPS)
+        self.tBest = array('f', (float(),)*self.N_STOPS)
+
+        self.rest_push_end = int()
+
+        self.t_d[-1] = self.WINDOWS[-1].l
+        self.slack_d[-1] = self.WINDOWS[-1].delta
+        self.remDrive_d[-1] = self.DRIVE
+        self.remDuty_d[-1] = self.DUTY
+
+
+
+
+
+# DRIVE = 11
+# DUTY = 14
+# REST = 10
+#
+WINDOWS = (TimeWindow(10,15), TimeWindow(3,18), TimeWindow(10,18), TimeWindow(15,35), TimeWindow(40,45), TimeWindow(75, 100), TimeWindow(75,100))
+travel_times = (6,2,4,10,10,15)
+
+TS = TripStats(WINDOWS, travel_times)
+
+#
+# nRests_between = [0]*len(travel_times)
+# nRests = [0]*(len(travel_times) + 1)
+# remDrive_a = [None]*(len(travel_times) + 1)
+# remDrive_d = [None]*(len(travel_times) + 1)
+# remDuty_a = [None]*(len(travel_times) + 1)
+# remDuty_d = [None]*(len(travel_times) + 1)
+# t_a = [None]*(len(travel_times) + 1)
+# t_d = [None]*(len(travel_times) + 1)
+# slack_a = [None]*(len(travel_times) + 1)
+# slack_d = [None]*(len(travel_times) + 1)
+# wait = [0]*(len(travel_times) + 1)
+# tBest = [None]*(len(travel_times) + 1)
+#
+# # declare "shadow" variables
+# t_a_shadow = [None]*(len(travel_times) + 1)
+# t_d_shadow = [None]*(len(travel_times) + 1)
+#
+# rest_push_end = int()
+#
+# # initialize
+# t_d[-1] = WINDOWS[-1].l
+# slack_d[-1] = WINDOWS[-1].delta
+# remDrive_d[-1] = 11
+# remDuty_d[-1] = 14
 
 def print_report(i):
 
@@ -42,41 +99,55 @@ def print_report(i):
     print('------')
 
 
-# initialize
-t_d[-1] = WINDOWS[-1].l
-slack_d[-1] = WINDOWS[-1].delta
-remDrive_d[-1] = 11
-remDuty_d[-1] = 14
+def compute_arrival_time(ts, i):
 
-def backwards_search(k, j, debug=False):
+    assert 0 <= i < ts.N_STOPS
+    print(i)
 
-    global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest
+    if ts.TRAVEL_TIMES[i] <= ts.remDrive_d[i + 1]:
+
+        ts.t_a[i] = ts.t_d[i + 1] - ts.TRAVEL_TIMES[i]
+        ts.remDrive_a[i] = ts.remDrive_d[i + 1] - ts.TRAVEL_TIMES[i]
+        ts.remDuty_a[i] = ts.remDuty_a[i + 1] - ts.TRAVEL_TIMES[i]
+        ts.slack_a[i] = ts.slack_d[i + 1]
+
+    else:
+
+        ts.nRests_between[i] = 1 + math.floor((ts.TRAVEL_TIMES[i] - ts.remDrive_d[i + 1]) / ts.DRIVE)
+        ts.t_a[i] = ts.t_d[i + 1] - (ts.TRAVEL_TIMES[i] + ts.nRests_between[i] * ts.REST)
+        ts.slack_a[i] = ts.slack_d[i + 1] + (ts.remDuty_d[i + 1] - ts.remDrive_d[i + 1]) + (ts.nRests_between[i] - 1) * (ts.DUTY - ts.DRIVE)
+        ts.remDuty_a[i] = ts.DUTY - ((ts.TRAVEL_TIMES[i] - ts.remDrive_d[i + 1]) % ts.DRIVE)
+        ts.remDrive_a[i] = ts.DRIVE - ((ts.TRAVEL_TIMES[i] - ts.remDrive_d[i + 1]) % ts.DRIVE)
+
+    return ts
+
+
+
+def backwards_search(ts, k, j, debug=False):
 
     for i in reversed(range(j, k+1)):
-        print(i)
-        # Phase I: compute arrival time
-        if T[i] <= remDrive_d[i+1]:
-            t_a[i] = t_d[i+1] - T[i]
-            remDrive_a[i] = remDrive_d[i+1] - T[i]
-            remDuty_a[i] = remDuty_a[i+1] - T[i]
-            slack_a[i] = slack_d[i+1]
-        else:
-            nRests_between[i] = 1 + math.floor((T[i] - remDrive_d[i+1])/DRIVE)
-            t_a[i] = t_d[i+1] - (T[i] + nRests_between[i]*REST)
-            slack_a[i] = slack_d[i+1] + (remDuty_d[i+1] - remDrive_d[i+1]) + (nRests_between[i] - 1)*(DUTY - DRIVE)
-            remDuty_a[i] = DUTY - ((T[i] - remDrive_d[i+1]) % DRIVE)
-            remDrive_a[i] = DRIVE - ((T[i] - remDrive_d[i + 1]) % DRIVE)
 
-        # Phase II: analyze arrival time
-        if t_a[i] < WINDOWS[i].e:
-            return False, i
+        #### Phase I: compute arrival time ####
+        ts = compute_arrival_time(ts, i)
+
+        #### Phase II: analyze arrival time ####
+
+        # dispatch window violation
+        if ts.t_a[i] < ts.WINDOWS[i].e:
+
+            # Branch A
+            return False, i, ts
+
         else:
 
-            if WINDOWS[i].e <= t_a[i] <= WINDOWS[i].l:
-                slack_d[i] = min(slack_a[i], t_a[i] - WINDOWS[i].e)
-                t_d[i] = copy(t_a[i])
-                remDrive_d[i] = remDrive_a[i]
-                remDuty_d[i] = remDuty_a[i]
+            if ts.WINDOWS[i].e <= ts.t_a[i] <= ts.WINDOWS[i].l:
+
+                # Branch B
+
+                ts.slack_d[i] = min(ts.slack_a[i], ts.t_a[i] - ts.WINDOWS[i].e)
+                ts.t_d[i] = copy(ts.t_a[i])
+                ts.remDrive_d[i] = ts.remDrive_a[i]
+                ts.remDuty_d[i] = ts.remDuty_a[i]
 
 
                 if debug:
@@ -85,57 +156,69 @@ def backwards_search(k, j, debug=False):
 
 
             else:
-                tBest[i] = t_a[i] - slack_a[i] - remDuty_a[i]
-                if tBest[i] > WINDOWS[i].l:
 
-                    nRests[i] = math.ceil((tBest[i] - WINDOWS[i].l)/(DRIVE + DUTY))
-                    wait[i] = max(t_a[i] - WINDOWS[i].l - nRests[i]*REST, 0)
+                ts.tBest[i] = ts.t_a[i] - ts.slack_a[i] - ts.remDuty_a[i]
 
-                    if tBest[i] - (nRests[i]*REST + (nRests[i] - 1)*DUTY) < WINDOWS[i].l:
+                if ts.tBest[i] > ts.WINDOWS[i].l:
 
-                        if t_a[i] - REST < WINDOWS[i].l:
-                            if t_a[i] - REST < WINDOWS[i].l:
-                                return False, i
+                    ts.nRests[i] = math.ceil((ts.tBest[i] - ts.WINDOWS[i].l)/(ts.DRIVE + ts.DUTY))
+                    ts.wait[i] = max(ts.t_a[i] - ts.WINDOWS[i].l - ts.nRests[i]*ts.REST, 0)
+
+                    if ts.tBest[i] - (ts.nRests[i]*ts.REST + (ts.nRests[i] - 1)*ts.DUTY) < ts.WINDOWS[i].l:
+
+                        if ts.t_a[i] - ts.REST < ts.WINDOWS[i].l:
+
+                            # time window violation
+                            if ts.t_a[i] - ts.REST < ts.WINDOWS[i].l:
+                                return False, i, ts
+
                             else:
-                                t_d[i] = t_a[i] - REST
-                                slack_d[i] = min(t_d[i] - WINDOWS[i].l, (tBest[i] - (nRests[i] * REST + (nRests[i] - 1) * DUTY)))
-                                remDuty_d[i] = DUTY
-                                remDrive_d[i] = DRIVE
+
+                                ts.t_d[i] = ts.t_a[i] - ts.REST
+                                ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].l, (ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY)))
+                                ts.remDuty_d[i] = ts.DUTY
+                                ts.remDrive_d[i] = ts.DRIVE
                                 # adjust previous
-                                t_d_shadow[i + 1] = t_d[i+1] - slack_a[i]
-                                t_a_shadow[i] = t_a[i] - slack_a[i]
+                                ts.t_d_shadow[i + 1] = ts.t_d[i+1] - ts.slack_a[i]
+                                ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
+
                         else:
-                            t_d[i] = WINDOWS[i].l
-                            slack_d[i] = min(t_d[i] - WINDOWS[i].l, (tBest[i] - (nRests[i]*REST + (nRests[i] - 1)*DUTY)))
-                            remDuty_d[i] = DUTY
-                            remDrive_d[i] = DRIVE
+
+                            ts.t_d[i] = ts.WINDOWS[i].l
+                            ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].l, (ts.tBest[i] - (ts.nRests[i]*ts.REST + (ts.nRests[i] - 1)*ts.DUTY)))
+                            ts.remDuty_d[i] = ts.DUTY
+                            ts.remDrive_d[i] = ts.DRIVE
                             # adjust previous
-                            t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
-                            t_a_shadow[i] = t_a[i] - slack_a[i]
+                            ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
+                            ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
 
                     else:
                         # adjust previous departure time
-                        t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
-                        t_a_shadow[i] = t_a[i] - slack_a[i]
+                        ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
+                        ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
 
-                        t_d[i] = WINDOWS[i].l
-                        remDuty_d[i] = DUTY - ((tBest[i] - (nRests[i]*REST + (nRests[i] - 1)*DUTY)) - WINDOWS[i].l)
-                        remDrive_d[i] = min(remDuty_d[i], DRIVE)
-                        slack_d[i] = 0
+                        ts.t_d[i] = ts.WINDOWS[i].l
+                        ts.remDuty_d[i] = ts.DUTY - ((ts.tBest[i] - (ts.nRests[i]*ts.REST + (ts.nRests[i] - 1)*ts.DUTY)) - ts.WINDOWS[i].l)
+                        ts.remDrive_d[i] = min(ts.remDuty_d[i], ts.DRIVE)
+                        ts.slack_d[i] = 0
 
                 else:
-                    wait[i] = t_a[i] - WINDOWS[i].l
+
+                    ts.wait[i] = ts.t_a[i] - ts.WINDOWS[i].l
 
                     # TODO: worked, check algo
-                    if wait[i] > slack_a[i]:
-                        # adjust previous departure time
-                        t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
-                        t_a_shadow[i] = t_a[i] - slack_a[i]
+                    if ts.wait[i] > ts.slack_a[i]:
 
-                        slack_d[i] = 0
-                        remDuty_d[i] = remDuty_a[i] - (wait[i] - slack_a[i])#- wait[i] - slack_a[i]
-                        remDrive_d[i] = min(remDrive_a[i], remDuty_d[i])
-                        t_d[i] = WINDOWS[i].l
+                        # Branch C
+
+                        # adjust previous departure time
+                        ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
+                        ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
+
+                        ts.slack_d[i] = 0
+                        ts.remDuty_d[i] = ts.remDuty_a[i] - (ts.wait[i] - ts.slack_a[i])#- wait[i] - slack_a[i]
+                        ts.remDrive_d[i] = min(ts.remDrive_a[i], ts.remDuty_d[i])
+                        ts.t_d[i] = ts.WINDOWS[i].l
 
 
                         if debug:
@@ -143,28 +226,28 @@ def backwards_search(k, j, debug=False):
                             print_report(i)
 
                     else:
-                        slack_d[i] = min(slack_a[i] - wait[i], WINDOWS[i].delta)
+                        ts.slack_d[i] = min(ts.slack_a[i] - ts.wait[i], ts.WINDOWS[i].delta)
 
                         # adjust previous departure time
-                        t_d_shadow[i+1] = t_d[i+1] - slack_a[i]
-                        t_a_shadow[i] = t_a[i] - slack_a[i]
+                        ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
+                        ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
 
 
-                        remDuty_d[i] = remDuty_a[i]
-                        remDrive_d[i] = remDrive_a[i]
-                        t_d[i] = WINDOWS[i].l
+                        ts.remDuty_d[i] = ts.remDuty_a[i]
+                        ts.remDrive_d[i] = ts.remDrive_a[i]
+                        ts.t_d[i] = ts.WINDOWS[i].l
 
                         if debug:
                             print("Branch: D")
                             print_report(i)
-    return True, i
+    return True, i, ts
 
 
 
 
-def compute_nrests_between(j, i):
+def compute_nrests_between(ts, j, i):
 
-    global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest
+    #global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest
 
     assert j < i
 
@@ -173,12 +256,12 @@ def compute_nrests_between(j, i):
 
     # count all rests at stops j through i
     for k in range(j, i+1):
-        nrests_ijs += nRests[k]
+        nrests_ijs += ts.nRests[k]
 
     # count all rests between stops j and i
     # nRests_between[k] = rests taken between k and k+1
     for k in range(j, i):
-        nrests_ijb += nRests_between[k]
+        nrests_ijb += ts.nRests_between[k]
 
     return nrests_ijs + nrests_ijb, nrests_ijs, nrests_ijb
 
@@ -199,19 +282,21 @@ def compute_nrests_between(j, i):
 #     remDuty_d[i] = cache['remDuty_d']
 #     slack_d[i] = cache['slack_d']
 
-def push_up_nearest_rest(i, j):
+def push_up_nearest_rest(ts, i, j):
 
-    global nRests, nRests_between
+    #global nRests, nRests_between
 
     assert j > i
 
-    p = nRests[i:(j+1)].index(1)
-    q = nRests_between[i:(j+1)].index(1)
+    p = ts.nRests[i:(j+1)].index(1)
+    q = ts.nRests_between[i:(j+1)].index(1)
 
     if p <= q:
-        nRests[i + p] = 0
+        ts.nRests[i + p] = 0
     else:
-        nRests_between[i + q] = 0
+        ts.nRests_between[i + q] = 0
+
+    return ts
 
 
 
@@ -219,133 +304,162 @@ def push_up_nearest_rest(i, j):
 
 
 
-def restore(i, debug=False):
+def restore(ts, i, debug=False):
 
-    global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest, rest_push_end
+    #global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest, rest_push_end
 
-    N = 6 # for testing only
-    for j in range(i+1, N):
+    #N = 6 # for testing only
+    for j in range(i+1, ts.N_STOPS):
 
-        nRests_ij, _ , _  = compute_nrests_between(i, j)
+        nRests_ij, _ , _  = compute_nrests_between(ts, i, j)
         #print("Rests between {} and {}: {}, waits at {}: {}".format(i,j, nRests_ij, j, wait[j]))
 
-        if wait[j] > 0 and nRests_ij > 0:
+        if ts.wait[j] > 0 and nRests_ij > 0:
             #print_report(j)
-            nRests[j] += 1
+            ts.nRests[j] += 1
 
-            push_up_nearest_rest(i, j)
-            rest_push_end = j
-            print("Rest push end: {}".format(rest_push_end))
+            ts = push_up_nearest_rest(ts, i, j)
+            ts.rest_push_end = j
 
+            #print("Rest push end: {}".format(rest_push_end))
 
+            if ts.t_a[j] - ts.nRests[j]*ts.REST >= ts.WINDOWS[j].e:
 
-            if t_a[j] - nRests[j]*REST >= WINDOWS[j].e:
+                if ts.t_a[j] - (ts.nRests[j]*ts.REST) <= ts.WINDOWS[j].l:
 
-                if t_a[j] - (nRests[j]*REST) <= WINDOWS[j].l:
-                    t_d[j] = t_a[j] - nRests[j]*REST
-                    remDuty_d[j] = DUTY
-                    remDrive_d[j] = DRIVE
-                    wait[j] = 0
-                    slack_d[j] = min(t_d[j]-WINDOWS[j].e, slack_a[j] + remDuty_a[j] + (nRests[j] - 1)*REST)
+                    # Branch B
+
+                    ts.t_d[j] = ts.t_a[j] - ts.nRests[j]*ts.REST
+                    ts.remDuty_d[j] = ts.DUTY
+                    ts.remDrive_d[j] = ts.DRIVE
+                    ts.wait[j] = 0
+                    ts.slack_d[j] = min(ts.t_d[j] - ts.WINDOWS[j].e, ts.slack_a[j] + ts.remDuty_a[j] + (ts.nRests[j] - 1)*ts.REST)
 
                     if debug:
-                        print("In Branch B at location {}".format(j))
-                        print_report(j)
+                        pass
+                        #print("In Branch B at location {}".format(j))
+                        #print_report(j)
                 else:
-                    t_d[j] = WINDOWS[j].l
-                    remDuty_d[j] = DUTY
-                    remDrive_d[j] = DRIVE
-                    wait[j] = t_a[j] - nRests[j]*REST - WINDOWS[j].l
-                    slack_d[j] = min(WINDOWS[j].delta, slack_a[j] + remDuty_a[j] + (nRests[j] -1)*REST - (t_a[j] - nRests[j]*REST - WINDOWS[j].l))
+
+                    # Branch A
+
+                    ts.t_d[j] = ts.WINDOWS[j].l
+                    ts.remDuty_d[j] = ts.DUTY
+                    ts.remDrive_d[j] = ts.DRIVE
+                    ts.wait[j] = ts.t_a[j] - ts.nRests[j]*ts.REST - ts.WINDOWS[j].l
+                    ts.slack_d[j] = min(ts.WINDOWS[j].delta, ts.slack_a[j] + ts.remDuty_a[j] + (ts.nRests[j] -1)*ts.REST - (ts.t_a[j] - ts.nRests[j]*ts.REST - ts.WINDOWS[j].l))
 
                     if debug:
-                        print("In Branch A at location {}".format(j))
+                        #print("In Branch A at location {}".format(j))
                         print_report(j)
 
-            print("In backwards search from {} to {}".format(j-1, i))
-            placeholder_i = backwards_search(j-1, i, debug=True)
-            print("=========================")
+            #print("In backwards search from {} to {}".format(j-1, i))
+            status, placeholder_i, ts = backwards_search(ts, j-1, i, debug=False)
+            #print("=========================")
 
-            if t_a[i] >= WINDOWS[i].e:
+            if ts.t_a[placeholder_i] >= ts.WINDOWS[placeholder_i].e: # before was i
                 print("Done!!")
-                return True
+                return True, ts
 
             else:
-                nRests[j] -= 1
+                ts.nRests[j] -= 1
 
         else:
             continue
 
-    return False
+    return False, ts
 
 
-#
-# def smart_trip():
-#
-#     Done = False
-#
-#     j = 5
-#     while j > 0:
-#         i = backwards_search(j, 0)
-#         print(i)
-#         # if i == 0:
-#         #     return True
-#         # else:
-#         restore_status = restore(i)
-#         print("restore called at {}".format(i))
-#         if restore_status == True:
-#             j = i - 1
-#         else:
-#             return False
-#
+
+def smart_trip(ts):
+
+    j = ts.N_STOPS - 2
+    print(j)
+    while j > 0:
+        status, i, ts = backwards_search(ts, j, 0)
+        print(i)
+        if status:
+            return True, ts
+        else:
+            restore_status, ts = restore(ts, i)
+            #print("restore called at {}".format(i))
+        if restore_status:
+            j = i - 1
+        else:
+            return False, ts
+
+    return True, ts
 
 
-results = backwards_search(5,0, debug = False)
+#t = smart_trip()
+# print(t)
+#results = backwards_search(5,0, debug = False)
 #status = restore(0, debug = False)
 #print(rest_push_end)
 #print(nRests_between)
 
 # TODO: combine shadow with actual
 
-for i in range(rest_push_end + 1, 5):
-
-    if t_a_shadow[i] and t_d_shadow[i+1]:
-        t_a[i] = t_a_shadow[i]
-        t_d[i+1] = t_d_shadow[i+1]
+# for i in range(rest_push_end + 1, 5):
+#
+#     if t_a_shadow[i] and t_d_shadow[i+1]:
+#         t_a[i] = t_a_shadow[i]
+#         t_d[i+1] = t_d_shadow[i+1]
 
 
 # construct path
 # using nRests, t_d, t_a
 
-legs = list()
 
-T = t_d[6]
+def construct_trip(ts):
 
-i = 5
+    legs = list()
 
-if nRests_between[i] > 0:
-    legs.append(('drive', T - remDrive_d[i + 1], T))
+    for i in range(ts.rest_push_end + 1, ts.N_STOPS - 2):
 
-    T -= remDrive_d[i+1]
-    for rests in range(nRests_between[i]):
-        legs.append(('rest', T - 10, T))
-        T -= 10
-        print(T)
-        legs.append(('drive', T - min(11, T - t_a[i]), T))
-        T -= min(T, T - t_a[i])
-
-else:
-    legs.append(('drive', t_a[i], T))
-    T -= T - t_a[i]
-
-if nRests[i] > 0:
-    legs.append(('rest', T - 10*nRests[i], T))
-    T -= 10*nRests[i]
-if t_d[i] < T:
-    legs.append(('wait', T - (t_a[i] - t_d[i]), T))
-    T -= t_a[i] - t_d[i]
-
-i -= 1
-print(legs)
+        if ts.t_a_shadow[i] and ts.t_d_shadow[i+1]:
+            ts.t_a[i] = ts.t_a_shadow[i]
+            ts.t_d[i+1] = ts.t_d_shadow[i+1]
 
 
+    T = ts.t_d[-1]
+
+    for i in reversed(range(ts.N_STOPS-1)):
+
+        if ts.nRests_between[i] > 0:
+            legs.append(('drive', T - ts.remDrive_d[i + 1], T))
+
+            T -= ts.remDrive_d[i+1]
+            for rests in range(ts.nRests_between[i]):
+                legs.append(('rest', T - 10, T))
+                T -= 10
+                print(T)
+                legs.append(('drive', T - min(11, T - ts.t_a[i]), T))
+                T -= min(T, T - ts.t_a[i])
+
+        else:
+            legs.append(('drive', ts.t_a[i], T))
+            T -= T - ts.t_a[i]
+
+        if ts.nRests[i] > 0:
+            legs.append(('rest', T - 10*ts.nRests[i], T))
+            T -= 10*ts.nRests[i]
+        if ts.t_d[i] < T:
+            legs.append(('wait', T - (ts.t_a[i] - ts.t_d[i]), T))
+            T -= ts.t_a[i] - ts.t_d[i]
+
+    return legs
+
+
+WINDOWS = (TimeWindow(10,15), TimeWindow(3,18), TimeWindow(10,18), TimeWindow(15,35), TimeWindow(40,45), TimeWindow(75, 100), TimeWindow(75,100))
+travel_times = (6,2,4,10,10,15)
+
+TS = TripStats(WINDOWS, travel_times)
+
+
+#_, ts = smart_trip(TS)
+#temp = smart_trip(TS)
+temp = backwards_search(TS, 5, 0)
+temp = restore(temp[2], 0)
+temp = construct_trip(temp[1])
+print(temp)
