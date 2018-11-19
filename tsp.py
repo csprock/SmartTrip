@@ -179,11 +179,7 @@ def backwards_search(ts, k, j, debug=False):
     return True, i, ts
 
 
-
-
 def compute_nrests_between(ts, j, i):
-
-    #global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest
 
     assert j < i
 
@@ -202,30 +198,22 @@ def compute_nrests_between(ts, j, i):
     return nrests_ijs + nrests_ijb, nrests_ijs, nrests_ijb
 
 
-# def make_cache(i):
-#     cache = dict()
-#     cache['t_d'] = copy(t_d[i])
-#     cache['wait'] = copy(wait[i])
-#     cache['remDrive_d'] = copy(remDrive_d[i])
-#     cache['remDuty_d'] = copy(remDuty_d[i])
-#     cache['slack_d'] = copy(slack_d[i])
-#     return cache
-#
-# def restore_cache(i, cache):
-#     t_d[i] = cache['t_d']
-#     wait[i] = cache['wait']
-#     remDrive_d[i] = cache['remDrive_d']
-#     remDuty_d[i] = cache['remDuty_d']
-#     slack_d[i] = cache['slack_d']
+def smallest_nonzero(arr):
+
+    for k, v in enumerate(arr):
+        if v > 0:
+            return k
+
 
 def push_up_nearest_rest(ts, i, j):
 
-    #global nRests, nRests_between
-
     assert j > i
 
-    p = ts.nRests[i:(j+1)].index(1)
-    q = ts.nRests_between[i:(j+1)].index(1)
+    #p = ts.nRests[i:(j+1)].index(1)
+    #q = ts.nRests_between[i:(j+1)].index(1)
+
+    p = smallest_nonzero(ts.nRests[i:(j + 1)])
+    q = smallest_nonzero(ts.nRests_between[i:(j + 1)])
 
     if p <= q:
         ts.nRests[i + p] = 0
@@ -233,11 +221,6 @@ def push_up_nearest_rest(ts, i, j):
         ts.nRests_between[i + q] = 0
 
     return ts
-
-
-
-
-
 
 
 def restore(ts, i, debug=False):
