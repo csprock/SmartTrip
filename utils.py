@@ -93,7 +93,7 @@ class TripStats:
         self.wait = array('f', (float(),)*self.N_STOPS)
         self.tBest = array('f', (float(),)*self.N_STOPS)
 
-        self.rest_push_end = int()
+        self.rest_push_end = list()
 
         self.t_d[-1] = self.WINDOWS[-1].l
         self.slack_d[-1] = self.WINDOWS[-1].delta

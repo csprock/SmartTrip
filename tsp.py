@@ -238,7 +238,7 @@ def restore(ts, i, debug=False):
             ts.nRests[j] += 1
 
             ts = push_up_nearest_rest(ts, i, j)
-            ts.rest_push_end = j
+            ts.rest_push_end.append(j)
 
             #print("Rest push end: {}".format(rest_push_end))
 
