@@ -123,20 +123,14 @@ def construct_trip(ts):
         T, legs = drive(T, legs, ts.nRests_between[i], ts.t_a[i], ts.remDrive_d[i+1])
 
         if ts.wait[i] and ts.nRests[i]:
-
-            if i in ts.pushed_up_rests:
-                T, legs = pushed_up_rests_with_wait(T, legs, ts.nRests[i], ts.t_d[i], ts.remDuty_d[i+1])
+            if i in ts.rest_push_end:
+                T, legs = pushed_up_rests_with_wait(T, legs, ts.nRests[i], ts.t_d[i], ts.remDuty_a[i])
             else:
-                T, legs = rests_with_waits(T, legs, ts.nRests[i], ts.t_d[i], ts.remDuty_d[i+1])
-
+                T, legs = rests_with_waits(T, legs, ts.nRests[i], ts.t_d[i], ts.remDuty_a[i])
         elif not ts.wait[i] and ts.nRests[i]:
-
             T, legs = rest_no_wait(T, legs, ts.nRests[i])
-
         elif ts.wait[i] and not ts.nRests[i]:
-
-            T, legs = wait_no_rest(T, legs, ts.t_d[i])
-
+            T, legs = wait_no_rest(T, legs, ts.t_d[i], ts.t_a[i])
         else:
             pass
 
@@ -146,8 +140,8 @@ def construct_trip(ts):
 def drive(T, legs, nRests_between, t_a, remDrive_d):
 
     if remDrive_d > 0:
-        legs.append(('drive', T - remDrive_d, T))
-        T -= remDrive_d
+        legs.append(('drive', T - min(11, remDrive_d, T - t_a), T))
+        T -= min(11, remDrive_d, T - t_a)
 
     if nRests_between > 0:
         for r in range(nRests_between):
@@ -158,8 +152,9 @@ def drive(T, legs, nRests_between, t_a, remDrive_d):
 
     return T, legs
 
-def wait_no_rest(T, legs, t_d):
-    legs.append(('wait', T - t_d, T))
+def wait_no_rest(T, legs, t_d, t_a):
+    legs.append(('wait', T - (t_a - t_d), T))
+    T -= t_a - t_d
     return T, legs
 
 def rest_no_wait(T, legs, nRests):
@@ -207,9 +202,9 @@ def rests_with_waits(T, legs, nRests, t_d, remDuty_d):
 
 
 
-WINDOWS = (TimeWindow(10,15), TimeWindow(3,18), TimeWindow(10,18), TimeWindow(15,35), TimeWindow(40,45), TimeWindow(75, 100), TimeWindow(75,100))
-travel_times = (6,2,4,10,10,15)
-TS = TripStats(WINDOWS, travel_times)
+# WINDOWS = (TimeWindow(10,15), TimeWindow(3,18), TimeWindow(10,18), TimeWindow(15,35), TimeWindow(40,45), TimeWindow(75, 100), TimeWindow(75,100))
+# travel_times = (6,2,4,10,10,15)
+# TS = TripStats(WINDOWS, travel_times)
 
 # WINDOWS = (TimeWindow(2,25),
 #            TimeWindow(10, 16),
@@ -219,7 +214,7 @@ TS = TripStats(WINDOWS, travel_times)
 # #
 # TS = TripStats(WINDOWS, travel_times)
 
-
+#
 # WINDOWS = (TimeWindow(2, 10),
 #            TimeWindow(5, 10),
 #            TimeWindow(40,40))
@@ -240,16 +235,16 @@ TS = TripStats(WINDOWS, travel_times)
 #
 # TS = TripStats(WINDOWS, travel_times)
 
-# WINDOWS = tuple(reversed((TimeWindow(100,100),
-#            TimeWindow(70,70),
-#            TimeWindow(61,70),
-#            TimeWindow(50,53),
-#            TimeWindow(20,20),
-#            TimeWindow(11,20))))
-#
-# travel_times = (9,10,1,9,10)
-#
-# TS = TripStats(WINDOWS, travel_times)
+WINDOWS = tuple(reversed((TimeWindow(100,100),
+           TimeWindow(70,70),
+           TimeWindow(61,70),
+           TimeWindow(50,53),
+           TimeWindow(20,20),
+           TimeWindow(11,20))))
+
+travel_times = (9,10,1,9,10)
+
+TS = TripStats(WINDOWS, travel_times)
 
 print(TS.N_STOPS)
 #_, ts = smart_trip(TS)
