@@ -99,6 +99,7 @@ class TripStats:
         self.slack_d[-1] = self.WINDOWS[-1].delta
         self.remDrive_d[-1] = self.DRIVE
         self.remDuty_d[-1] = self.DUTY
+        self.t_a[-1] = self.WINDOWS[-1].l
 
     def _report(self):
 
