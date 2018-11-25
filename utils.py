@@ -123,3 +123,94 @@ class TripStats:
         rpt = self._report()
         with pd.option_context('display.max_rows', rpt.shape[0], 'display.max_columns', rpt.shape[1]):
             print(rpt)
+
+def construct_trip(ts):
+
+    legs = list()
+    T = ts.t_a[-1]
+
+    if ts.t_d[-1] < ts.t_a[-1]:
+        legs.append(('wait', T - ts.t_d[-1], T))
+        T -= ts.t_d[-1]
+
+    for i in reversed(range(ts.N_STOPS - 1)):
+
+        T, legs = drive(T, legs, ts.nRests_between[i], ts.t_a[i], ts.remDrive_d[i+1])
+
+        if ts.wait[i] and ts.nRests[i]:
+            if i in ts.rest_push_end:
+                T, legs = pushed_up_rests_with_wait(T, legs, ts.nRests[i], ts.t_d[i], ts.remDuty_a[i], ts.wait[i])
+            else:
+                T, legs = rests_with_waits(T, legs, ts.nRests[i], ts.t_d[i], ts.remDuty_a[i], ts.wait[i])
+        elif not ts.wait[i] and ts.nRests[i]:
+            T, legs = rest_no_wait(T, legs, ts.nRests[i])
+        elif ts.wait[i] and not ts.nRests[i]:
+            T, legs = wait_no_rest(T, legs, ts.t_d[i], ts.t_a[i])
+        else:
+            pass
+
+    return T, legs
+
+
+def drive(T, legs, nRests_between, t_a, remDrive_d):
+
+    if remDrive_d > 0:
+        legs.append(('drive', T - min(11, remDrive_d, T - t_a), T))
+        T -= min(11, remDrive_d, T - t_a)
+
+    if nRests_between > 0:
+        for r in range(nRests_between):
+            legs.append(('rest', T - 10, T))
+            T -= 10
+            legs.append(('drive', T - min(11, T - t_a), T))
+            T -= min(11, T - t_a)
+
+    return T, legs
+
+def wait_no_rest(T, legs, t_d, t_a):
+    legs.append(('wait', T - (t_a - t_d), T))
+    T -= t_a - t_d
+    return T, legs
+
+def rest_no_wait(T, legs, nRests):
+    for r in range(nRests):
+        legs.append(('rest', T - 10, T))
+        T -= 10
+
+    return T, legs
+
+def pushed_up_rests_with_wait(T, legs, nRests, t_d, remDuty_d, wait):
+
+    if remDuty_d > 0:
+        legs.append(('wait', T - min(remDuty_d, wait), T))
+        T -= min(remDuty_d, wait)
+
+    for r in range(nRests):
+        if r == nRests - 2:
+            for j in range(2):
+                legs.append(('rest', T - 10, T))
+                T -= 10
+            return T, legs
+        else:
+            legs.append(('rest', T - 10, T))
+            T -= 10
+            if T > t_d:
+                legs.append(('rest', T - min(14, t_d), T))
+                T -= min(14, t_d)
+
+    return T, legs
+
+def rests_with_waits(T, legs, nRests, t_d, remDuty_d, wait):
+
+    if remDuty_d > 0:
+        legs.append(('wait', T - min(remDuty_d, wait), T))
+        T -= min(remDuty_d, wait)
+
+    for r in range(nRests):
+        legs.append(('rest', T - 10, T))
+        T -= 10
+        if T > t_d:
+            legs.append(('wait', T - min(14, T - t_d), T))
+            T -= min(14, T - t_d)
+
+    return T, legs
