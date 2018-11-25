@@ -154,6 +154,16 @@ def construct_trip(ts):
 
 def drive(T, legs, nRests_between, t_a, remDrive_d):
 
+    if remDrive_d < T - t_a and nRests_between == 0:
+        msg = '''
+        Remaining drive time {} less than time to destination {}, but 0 rests were given.
+        '''.format(remDrive_d, T - t_a)
+        raise ValueError(msg)
+
+    if T - t_a > remDrive_d + nRests_between*10 + max(0, (nRests_between - 1)*11) + 11:
+        # TODO: add message
+        raise ValueError
+
     if remDrive_d > 0:
         legs.append(('drive', T - min(11, remDrive_d, T - t_a), T))
         T -= min(11, remDrive_d, T - t_a)
