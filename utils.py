@@ -178,11 +178,19 @@ def drive(T, legs, nRests_between, t_a, remDrive_d):
     return T, legs
 
 def wait_no_rest(T, legs, t_d, t_a):
+
+    assert t_d < t_a
+    assert t_a - t_d <= 14
+    assert T == t_a
+
     legs.append(('wait', T - (t_a - t_d), T))
     T -= t_a - t_d
     return T, legs
 
 def rest_no_wait(T, legs, nRests):
+
+    assert nRests > 0
+
     for r in range(nRests):
         legs.append(('rest', T - 10, T))
         T -= 10
