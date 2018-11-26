@@ -41,7 +41,7 @@ def compute_arrival_time(ts, i):
     return ts
 
 
-
+# TODO: set shadow variables to normal ones for non-slack branches
 def backwards_search(ts, k, j, debug=False):
 
     for i in reversed(range(j, k+1)):
@@ -308,26 +308,6 @@ def smart_trip(ts):
             return False, ts
 
     return True, ts
-
-
-#t = smart_trip()
-# print(t)
-#results = backwards_search(5,0, debug = False)
-#status = restore(0, debug = False)
-#print(rest_push_end)
-#print(nRests_between)
-
-# TODO: combine shadow with actual
-
-# for i in range(rest_push_end + 1, 5):
-#
-#     if t_a_shadow[i] and t_d_shadow[i+1]:
-#         t_a[i] = t_a_shadow[i]
-#         t_d[i+1] = t_d_shadow[i+1]
-
-
-# construct path
-# using nRests, t_d, t_a
 
 
 
