@@ -199,6 +199,8 @@ def rest_no_wait(T, legs, nRests):
 
 def pushed_up_rests_with_wait(T, legs, nRests, t_d, remDuty_d, wait):
 
+    assert T - t_d == 10*nRests + wait
+
     if remDuty_d > 0:
         legs.append(('wait', T - min(remDuty_d, wait), T))
         T -= min(remDuty_d, wait)
@@ -219,6 +221,8 @@ def pushed_up_rests_with_wait(T, legs, nRests, t_d, remDuty_d, wait):
     return T, legs
 
 def rests_with_waits(T, legs, nRests, t_d, remDuty_d, wait):
+
+    assert T - t_d == 10*nRests + wait
 
     if remDuty_d > 0:
         legs.append(('wait', T - min(remDuty_d, wait), T))
