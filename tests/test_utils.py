@@ -4,7 +4,8 @@ sys.path.append('..')
 from utils import construct_trip, drive, wait_no_rest, rest_no_wait, pushed_up_rests_with_wait, rests_with_waits
 
 # TODO: rename test functions and data inputs
-# TODO: create helper function for checking lists element-wise            
+# TODO: create helper function for checking lists element-wise
+# TODO: create help function to run function with given inputs
 
 
 class TestDrive(unittest.TestCase):
@@ -331,6 +332,210 @@ class TestRestNoWait(unittest.TestCase):
                                 nRests=self.assertion_1['nRests'])
 
 # TODO: rests_with_waits
+class TestRestWithWaits(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+
+        # TODO: do multi-rest analogs for scenarios 1-3
+        # wait > remDuty
+        cls.scenario_1_input = {
+            'T': 29,
+            'legs': [],
+            'nRests': 1,
+            't_d': 10,
+            'remDuty_a': 3,
+            'wait': 9
+        }
+        # wait = remDuty (no wait after rest)
+        cls.scenario_2_input = {
+            'T': 29,
+            'legs': [],
+            'nRests': 1,
+            't_d': 16,
+            'remDuty_a': 3,
+            'wait': 3
+        }
+        # no remaining drive, single rest
+        cls.scenario_3_input = {
+            'T': 29,
+            'legs': [],
+            'nRests': 1,
+            't_d': 15,
+            'remDuty_a': 0,
+            'wait': 4
+        }
+        # remaining rests, multiple rests, wait > remDuty
+        cls.scenario_4_input = {
+            'T': 90,
+            'legs': [],
+            'nRests': 2,
+            't_d': 44,
+            'remDuty_a': 4,
+            'wait': 26
+        }
+        # multiple rests, no remDuty
+        cls.scenario_5_input = {
+            'T': 90,
+            'legs': [],
+            'nRests': 2,
+            't_d': 54,
+            'remDuty_a': 0,
+            'wait': 16
+        }
+
+        # multiple rests, no remDuty
+        cls.scenario_6_input = {
+            'T': 90,
+            'legs': [],
+            'nRests': 2,
+            't_d': 56,
+            'remDuty_a': 0,
+            'wait': 14
+        }
+
+        # test assertion
+        cls.assertion_1 = {
+            'T': 29,
+            'legs': [],
+            'nRests': 1,
+            't_d': 14,
+            'remDuty_a': 0,
+            'wait': 4
+        }
+
+    def test_scenario_1(self):
+
+        expected = [('wait', 26, 29),
+                    ('rest', 16, 26),
+                    ('wait', 10, 16)]
+
+        T, legs = rests_with_waits(T=self.scenario_1_input['T'],
+                                   legs=self.scenario_1_input['legs'],
+                                   nRests=self.scenario_1_input['nRests'],
+                                   t_d=self.scenario_1_input['t_d'],
+                                   remDuty_a=self.scenario_1_input['remDuty_a'],
+                                   wait=self.scenario_1_input['wait'])
+
+        self.assertEqual(len(legs), 3)
+        self.assertEqual(T, 10)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(legs[i], expected[i])
+
+    def test_scenario_2(self):
+
+        expected = [('wait', 26, 29),
+                    ('rest', 16, 26)]
+
+        T, legs = rests_with_waits(T=self.scenario_2_input['T'],
+                                   legs=self.scenario_2_input['legs'],
+                                   nRests=self.scenario_2_input['nRests'],
+                                   t_d=self.scenario_2_input['t_d'],
+                                   remDuty_a=self.scenario_2_input['remDuty_a'],
+                                   wait=self.scenario_2_input['wait'])
+
+        self.assertEqual(len(legs), 2)
+        self.assertEqual(T, 16)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(legs[i], expected[i])
+
+    def test_scenario_3(self):
+
+        expected = [('rest', 19, 29),
+                    ('wait', 15, 19)]
+
+        T, legs = rests_with_waits(T=self.scenario_3_input['T'],
+                                   legs=self.scenario_3_input['legs'],
+                                   nRests=self.scenario_3_input['nRests'],
+                                   t_d=self.scenario_3_input['t_d'],
+                                   remDuty_a=self.scenario_3_input['remDuty_a'],
+                                   wait=self.scenario_3_input['wait'])
+
+        self.assertEqual(len(legs), 2)
+        self.assertEqual(T, 15)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(legs[i], expected[i])
+
+    def test_scenario_4(self):
+
+        expected = [('wait', 86, 90),
+                    ('rest', 76, 86),
+                    ('wait', 62, 76),
+                    ('rest', 52, 62),
+                    ('wait', 44, 52)]
+
+        T, legs = rests_with_waits(T=self.scenario_4_input['T'],
+                                   legs=self.scenario_4_input['legs'],
+                                   nRests=self.scenario_4_input['nRests'],
+                                   t_d=self.scenario_4_input['t_d'],
+                                   remDuty_a=self.scenario_4_input['remDuty_a'],
+                                   wait=self.scenario_4_input['wait'])
+
+        self.assertEqual(len(legs), 5)
+        self.assertEqual(T, 44)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(legs[i], expected[i])
+
+    def test_scenario_5(self):
+
+        expected = [('rest', 80, 90),
+                    ('wait', 66, 80),
+                    ('rest', 56, 66),
+                    ('wait', 54, 56)]
+
+        T, legs = rests_with_waits(T=self.scenario_5_input['T'],
+                                   legs=self.scenario_5_input['legs'],
+                                   nRests=self.scenario_5_input['nRests'],
+                                   t_d=self.scenario_5_input['t_d'],
+                                   remDuty_a=self.scenario_5_input['remDuty_a'],
+                                   wait=self.scenario_5_input['wait'])
+
+        self.assertEqual(len(legs), 4)
+        self.assertEqual(T, 54)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(legs[i], expected[i])
+
+    def test_scenario_6(self):
+
+        expected = [('rest', 80, 90),
+                    ('wait', 66, 80),
+                    ('rest', 56, 66)]
+
+        T, legs = rests_with_waits(T=self.scenario_6_input['T'],
+                                   legs=self.scenario_6_input['legs'],
+                                   nRests=self.scenario_6_input['nRests'],
+                                   t_d=self.scenario_6_input['t_d'],
+                                   remDuty_a=self.scenario_6_input['remDuty_a'],
+                                   wait=self.scenario_6_input['wait'])
+
+        self.assertEqual(len(legs), 3)
+        self.assertEqual(T, 56)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(legs[i], expected[i])
+
+
+    def test_assertion_1(self):
+
+        with self.assertRaises(AssertionError):
+
+            _, _ = rests_with_waits(T=self.assertion_1['T'],
+                                legs=self.assertion_1['legs'],
+                                nRests=self.assertion_1['nRests'],
+                                t_d=self.assertion_1['t_d'],
+                                remDuty_a=self.assertion_1['remDuty_a'],
+                                wait=self.assertion_1['wait'])
 
 
 # TODO: pushed_up_rests_with_wait
