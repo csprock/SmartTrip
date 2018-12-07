@@ -19,7 +19,7 @@ class TestDrive(unittest.TestCase):
 
         #### No rests between driving ####
         # No rests between driving, remDrive_d > time remaining to destination
-        cls.drive_senario_1a_input = {
+        cls.drive_scenario_1a_input = {
             'T': 20,
             'legs': [],
             'nRests_between': 0,
@@ -28,7 +28,7 @@ class TestDrive(unittest.TestCase):
         }
 
         # No rests between driving, remDrive_d == time remaining to destination
-        cls.drive_senario_1b_input = {
+        cls.drive_scenario_1b_input = {
             'T': 20,
             'legs': [],
             'nRests_between': 0,
@@ -38,7 +38,7 @@ class TestDrive(unittest.TestCase):
 
         #### Rests between driving ####
         # 1 rest between driving
-        cls.drive_senario_2a_input = {
+        cls.drive_scenario_2a_input = {
             'T': 20,
             'legs': [],
             'nRests_between': 1,
@@ -47,7 +47,7 @@ class TestDrive(unittest.TestCase):
         }
 
         # multiple rests between driving
-        cls.drive_senario_2b_input = {
+        cls.drive_scenario_2b_input = {
             'T': 40,
             'legs': [],
             'nRests_between': 2,
@@ -56,7 +56,7 @@ class TestDrive(unittest.TestCase):
         }
 
         # start driving without any remaining drive time
-        cls.drive_senario_2c_input = {
+        cls.drive_scenario_2c_input = {
             'T': 60,
             'legs': [],
             'nRests_between': 3,
@@ -76,7 +76,7 @@ class TestDrive(unittest.TestCase):
         }
 
         # Not enough rests given to cover required time
-        cls.drive_senario_3b_input = {
+        cls.drive_scenario_3b_input = {
             'T': 40,
             'legs': [],
             'nRests_between': 1,
@@ -85,15 +85,11 @@ class TestDrive(unittest.TestCase):
         }
 
 
-    def test_senario_1a(self):
+    def test_scenario_1a(self):
 
         expected = [('drive', 15, 20)]
 
-        T, legs = drive(T=self.drive_senario_1a_input['T'],
-                        legs=self.drive_senario_1a_input['legs'],
-                        nRests_between=self.drive_senario_1a_input['nRests_between'],
-                        t_a=self.drive_senario_1a_input['t_a'],
-                        remDrive_d=self.drive_senario_1a_input['remDrive_d'])
+        T, legs = drive(**self.drive_scenario_1a_input)
 
 
         self.assertEqual(len(legs), 1)
@@ -101,17 +97,13 @@ class TestDrive(unittest.TestCase):
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
-    def test_senario_1b(self):
+    def test_scenario_1b(self):
 
         expected = [('drive', 15, 20)]
 
-        T, legs = drive(T=self.drive_senario_1b_input['T'],
-                        legs=self.drive_senario_1b_input['legs'],
-                        nRests_between=self.drive_senario_1b_input['nRests_between'],
-                        t_a=self.drive_senario_1b_input['t_a'],
-                        remDrive_d=self.drive_senario_1b_input['remDrive_d'])
+        T, legs = drive(**self.drive_scenario_1b_input)
 
 
         self.assertEqual(len(legs), 1)
@@ -119,28 +111,24 @@ class TestDrive(unittest.TestCase):
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
-    def test_senario_2a(self):
+    def test_scenario_2a(self):
 
         expected = [('drive', 15, 20),
                   ('rest', 5, 15),
                   ('drive', 0, 5)]
 
-        T, legs = drive(T=self.drive_senario_2a_input['T'],
-                        legs=self.drive_senario_2a_input['legs'],
-                        nRests_between=self.drive_senario_2a_input['nRests_between'],
-                        t_a=self.drive_senario_2a_input['t_a'],
-                        remDrive_d=self.drive_senario_2a_input['remDrive_d'])
+        T, legs = drive(**self.drive_scenario_2a_input)
 
         self.assertEqual(len(legs), 3)
         self.assertEqual(T, 0)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
-    def test_senario_2b(self):
+    def test_scenario_2b(self):
 
         expected = [('drive', 35, 40),
                   ('rest', 25, 35),
@@ -148,20 +136,16 @@ class TestDrive(unittest.TestCase):
                   ('rest', 4, 14),
                   ('drive', 0, 4)]
 
-        T, legs = drive(T=self.drive_senario_2b_input['T'],
-                        legs=self.drive_senario_2b_input['legs'],
-                        nRests_between=self.drive_senario_2b_input['nRests_between'],
-                        t_a=self.drive_senario_2b_input['t_a'],
-                        remDrive_d=self.drive_senario_2b_input['remDrive_d'])
+        T, legs = drive(**self.drive_scenario_2b_input)
 
         self.assertEqual(len(legs), 5)
         self.assertEqual(T, 0)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
-    def test_senario_2c(self):
+    def test_scenario_2c(self):
 
         expected = [('rest', 50, 60),
                   ('drive', 39, 50),
@@ -170,40 +154,28 @@ class TestDrive(unittest.TestCase):
                   ('rest', 8, 18),
                   ('drive', 0, 8)]
 
-        T, legs = drive(T=self.drive_senario_2c_input['T'],
-                        legs=self.drive_senario_2c_input['legs'],
-                        nRests_between=self.drive_senario_2c_input['nRests_between'],
-                        t_a=self.drive_senario_2c_input['t_a'],
-                        remDrive_d=self.drive_senario_2c_input['remDrive_d'])
+        T, legs = drive(**self.drive_scenario_2c_input)
 
         self.assertEqual(len(legs), 6)
         self.assertEqual(T, 0)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
-    def test_senario_3a(self):
-
-        # TODO: create regex match and use assertRaisesRegex
-        with self.assertRaises(ValueError):
-
-            _, _ = drive(T=self.drive_senario_3a_input['T'],
-                         legs=self.drive_senario_3a_input['legs'],
-                         nRests_between=self.drive_senario_3a_input['nRests_between'],
-                         t_a=self.drive_senario_3a_input['t_a'],
-                         remDrive_d=self.drive_senario_3a_input['remDrive_d'])
-
-    def test_senario_3a(self):
+    def test_scenario_3a(self):
 
         # TODO: create regex match and use assertRaisesRegex
         with self.assertRaises(ValueError):
 
-            T, legs = drive(T=self.drive_senario_3b_input['T'],
-                            legs=self.drive_senario_3b_input['legs'],
-                            nRests_between=self.drive_senario_3b_input['nRests_between'],
-                            t_a=self.drive_senario_3b_input['t_a'],
-                            remDrive_d=self.drive_senario_3b_input['remDrive_d'])
+            _, _ = drive(**self.drive_senario_3a_input)
+
+    def test_scenario_3b(self):
+
+        # TODO: create regex match and use assertRaisesRegex
+        with self.assertRaises(ValueError):
+
+            T, legs = drive(**self.drive_scenario_3b_input)
 
 
 class TestWaitNoRest(unittest.TestCase):
@@ -248,44 +220,32 @@ class TestWaitNoRest(unittest.TestCase):
 
         expected = [('wait', 3, 5)]
 
-        T, legs = wait_no_rest(T=self.scenario_1_input['T'],
-                               legs=self.scenario_1_input['legs'],
-                               t_d=self.scenario_1_input['t_d'],
-                               t_a=self.scenario_1_input['t_a'])
+        T, legs = wait_no_rest(**self.scenario_1_input)
 
         self.assertEqual(len(legs), 1)
         self.assertEqual(T, 3)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
     def test_assertion_1(self):
 
         with self.assertRaises(AssertionError):
 
-            _, _ = wait_no_rest(T=self.assertion_1_input['T'],
-                         legs=self.assertion_1_input['legs'],
-                         t_d=self.assertion_1_input['t_d'],
-                         t_a=self.assertion_1_input['t_a'])
+            _, _ = wait_no_rest(**self.assertion_1_input)
 
     def test_assertion_2(self):
 
         with self.assertRaises(AssertionError):
 
-            _, _ = wait_no_rest(T=self.assertion_2_input['T'],
-                         legs=self.assertion_2_input['legs'],
-                         t_d=self.assertion_2_input['t_d'],
-                         t_a=self.assertion_2_input['t_a'])
+            _, _ = wait_no_rest(**self.assertion_2_input)
 
     def test_assertion_3(self):
 
         with self.assertRaises(AssertionError):
 
-            _, _ = wait_no_rest(T=self.assertion_3_input['T'],
-                         legs=self.assertion_3_input['legs'],
-                         t_d=self.assertion_3_input['t_d'],
-                         t_a=self.assertion_3_input['t_a'])
+            _, _ = wait_no_rest(**self.assertion_3_input)
 
 
 class TestRestNoWait(unittest.TestCase):
@@ -311,25 +271,21 @@ class TestRestNoWait(unittest.TestCase):
         expected = [('rest', 10, 20),
                     ('rest', 0, 10)]
 
-        T, legs = rest_no_wait(T=self.scenario_1['T'],
-                               legs=self.scenario_1['legs'],
-                               nRests=self.scenario_1['nRests'])
+        T, legs = rest_no_wait(**self.scenario_1)
 
         self.assertEqual(len(legs), 2)
         self.assertEqual(T, 0)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
 
     def test_assertion_1(self):
 
         with self.assertRaises(AssertionError):
 
-            _, _ = rest_no_wait(T=self.assertion_1['T'],
-                                legs=self.assertion_1['legs'],
-                                nRests=self.assertion_1['nRests'])
+            _, _ = rest_no_wait(**self.assertion_1)
 
 # TODO: rests_with_waits
 class TestRestWithWaits(unittest.TestCase):
@@ -384,7 +340,7 @@ class TestRestWithWaits(unittest.TestCase):
             'wait': 16
         }
 
-        # multiple rests, no remDuty
+        # multiple rests, no remDuty, no wait after last rest
         cls.scenario_6_input = {
             'T': 90,
             'legs': [],
@@ -410,57 +366,42 @@ class TestRestWithWaits(unittest.TestCase):
                     ('rest', 16, 26),
                     ('wait', 10, 16)]
 
-        T, legs = rests_with_waits(T=self.scenario_1_input['T'],
-                                   legs=self.scenario_1_input['legs'],
-                                   nRests=self.scenario_1_input['nRests'],
-                                   t_d=self.scenario_1_input['t_d'],
-                                   remDuty_a=self.scenario_1_input['remDuty_a'],
-                                   wait=self.scenario_1_input['wait'])
+        T, legs = rests_with_waits(**self.scenario_1_input)
 
         self.assertEqual(len(legs), 3)
         self.assertEqual(T, 10)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
     def test_scenario_2(self):
 
         expected = [('wait', 26, 29),
                     ('rest', 16, 26)]
 
-        T, legs = rests_with_waits(T=self.scenario_2_input['T'],
-                                   legs=self.scenario_2_input['legs'],
-                                   nRests=self.scenario_2_input['nRests'],
-                                   t_d=self.scenario_2_input['t_d'],
-                                   remDuty_a=self.scenario_2_input['remDuty_a'],
-                                   wait=self.scenario_2_input['wait'])
+        T, legs = rests_with_waits(**self.scenario_2_input)
 
         self.assertEqual(len(legs), 2)
         self.assertEqual(T, 16)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
     def test_scenario_3(self):
 
         expected = [('rest', 19, 29),
                     ('wait', 15, 19)]
 
-        T, legs = rests_with_waits(T=self.scenario_3_input['T'],
-                                   legs=self.scenario_3_input['legs'],
-                                   nRests=self.scenario_3_input['nRests'],
-                                   t_d=self.scenario_3_input['t_d'],
-                                   remDuty_a=self.scenario_3_input['remDuty_a'],
-                                   wait=self.scenario_3_input['wait'])
+        T, legs = rests_with_waits(**self.scenario_3_input)
 
         self.assertEqual(len(legs), 2)
         self.assertEqual(T, 15)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
     def test_scenario_4(self):
 
@@ -470,19 +411,14 @@ class TestRestWithWaits(unittest.TestCase):
                     ('rest', 52, 62),
                     ('wait', 44, 52)]
 
-        T, legs = rests_with_waits(T=self.scenario_4_input['T'],
-                                   legs=self.scenario_4_input['legs'],
-                                   nRests=self.scenario_4_input['nRests'],
-                                   t_d=self.scenario_4_input['t_d'],
-                                   remDuty_a=self.scenario_4_input['remDuty_a'],
-                                   wait=self.scenario_4_input['wait'])
+        T, legs = rests_with_waits(**self.scenario_4_input)
 
         self.assertEqual(len(legs), 5)
         self.assertEqual(T, 44)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
     def test_scenario_5(self):
 
@@ -491,19 +427,14 @@ class TestRestWithWaits(unittest.TestCase):
                     ('rest', 56, 66),
                     ('wait', 54, 56)]
 
-        T, legs = rests_with_waits(T=self.scenario_5_input['T'],
-                                   legs=self.scenario_5_input['legs'],
-                                   nRests=self.scenario_5_input['nRests'],
-                                   t_d=self.scenario_5_input['t_d'],
-                                   remDuty_a=self.scenario_5_input['remDuty_a'],
-                                   wait=self.scenario_5_input['wait'])
+        T, legs = rests_with_waits(**self.scenario_5_input)
 
         self.assertEqual(len(legs), 4)
         self.assertEqual(T, 54)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
     def test_scenario_6(self):
 
@@ -511,34 +442,164 @@ class TestRestWithWaits(unittest.TestCase):
                     ('wait', 66, 80),
                     ('rest', 56, 66)]
 
-        T, legs = rests_with_waits(T=self.scenario_6_input['T'],
-                                   legs=self.scenario_6_input['legs'],
-                                   nRests=self.scenario_6_input['nRests'],
-                                   t_d=self.scenario_6_input['t_d'],
-                                   remDuty_a=self.scenario_6_input['remDuty_a'],
-                                   wait=self.scenario_6_input['wait'])
+        T, legs = rests_with_waits(**self.scenario_6_input)
 
         self.assertEqual(len(legs), 3)
         self.assertEqual(T, 56)
 
         for i, leg in enumerate(legs):
             with self.subTest(i=i):
-                self.assertEqual(legs[i], expected[i])
+                self.assertEqual(leg, expected[i])
 
 
     def test_assertion_1(self):
 
         with self.assertRaises(AssertionError):
 
-            _, _ = rests_with_waits(T=self.assertion_1['T'],
-                                legs=self.assertion_1['legs'],
-                                nRests=self.assertion_1['nRests'],
-                                t_d=self.assertion_1['t_d'],
-                                remDuty_a=self.assertion_1['remDuty_a'],
-                                wait=self.assertion_1['wait'])
+            _, _ = rests_with_waits(**self.assertion_1)
 
 
 # TODO: pushed_up_rests_with_wait
+class TestPushedUpRestsWithWait(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+
+        # resting takes all time between arrival and departure, no waits
+        cls.scenario_1 = {
+            'T': 60,
+            'legs': [],
+            'nRests': 2,
+            't_d': 40,
+            'remDuty_d': 0,
+            'wait': 0
+        }
+        # wait = remDuty_d
+        cls.scenario_2 = {
+            'T': 40,
+            'legs': [],
+            'nRests': 2,
+            't_d': 15,
+            'remDuty_d': 5,
+            'wait': 5
+        }
+        # uses all remDuty, 3 rests with no waiting after
+        cls.scenario_3 = {
+            'T': 80,
+            'legs': [],
+            'nRests': 3,
+            't_d': 31,
+            'remDuty_d': 5,
+            'wait': 19
+        }
+        # uses all remDuty, 3 rests with some waiting after last rest
+        cls.scenario_4 = {
+            'T': 80,
+            'legs': [],
+            'nRests': 3,
+            't_d': 30,
+            'remDuty_d': 5,
+            'wait': 20
+        }
+        # no remDuty but wait after last rest
+        cls.scenario_5 = {
+            'T': 60,
+            'legs': [],
+            'nRests': 2,
+            't_d': 35,
+            'remDuty_d': 0,
+            'wait': 5
+        }
+
+        # test assertion statement (same as above with one extra hour of wait)
+        cls.assertion_1 = {
+            'T': 80,
+            'legs': [],
+            'nRests': 3,
+            't_d': 30,
+            'remDuty_d': 5,
+            'wait': 21
+        }
+
+    def test_scenario_1(self):
+
+        expected = [('rest', 50, 60),
+                    ('rest', 40, 50)]
+
+        T, legs = pushed_up_rests_with_wait(**self.scenario_1)
+
+        self.assertEqual(T, 40)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(leg, expected[i])
+
+    def test_scenario_2(self):
+
+        expected = [('wait', 35, 40),
+                    ('rest', 25, 35),
+                    ('rest', 15, 25)]
+
+        T, legs = pushed_up_rests_with_wait(**self.scenario_2)
+
+        self.assertEqual(T, 15)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(leg, expected[i])
+
+    def test_scenario_3(self):
+
+        expected = [('wait', 75, 80),
+                    ('rest', 65, 75),
+                    ('wait', 51, 65),
+                    ('rest', 41, 51),
+                    ('rest', 31, 41)]
+
+        T, legs = pushed_up_rests_with_wait(**self.scenario_3)
+
+        self.assertEqual(T, 31)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(leg, expected[i])
+
+    def test_scenario_4(self):
+
+        expected = [('wait', 75, 80),
+                    ('rest', 65, 75),
+                    ('wait', 51, 65),
+                    ('rest', 41, 51),
+                    ('rest', 31, 41),
+                    ('wait', 30, 31)]
+
+        T, legs = pushed_up_rests_with_wait(**self.scenario_4)
+
+        self.assertEqual(T, 30)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(leg, expected[i])
+
+    def test_scenario_5(self):
+
+        expected = [('rest', 50, 60),
+                    ('rest', 40, 50),
+                    ('wait', 35, 40)]
+
+        T, legs = pushed_up_rests_with_wait(**self.scenario_5)
+
+        self.assertEqual(T, 35)
+
+        for i, leg in enumerate(legs):
+            with self.subTest(i=i):
+                self.assertEqual(leg, expected[i])
+
+    def test_assertion_1(self):
+
+        with self.assertRaises(AssertionError):
+
+            _, _ = pushed_up_rests_with_wait(**self.assertion_1)
 
 if __name__ == '__main__':
     unittest.main()

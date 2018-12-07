@@ -210,13 +210,19 @@ def pushed_up_rests_with_wait(T, legs, nRests, t_d, remDuty_d, wait):
             for j in range(2):
                 legs.append(('rest', T - 10, T))
                 T -= 10
+
+            if T > t_d:
+                legs.append(('wait', T - (T - t_d), T))
+                T -= (T - t_d)
+
             return T, legs
+
         else:
             legs.append(('rest', T - 10, T))
             T -= 10
             if T > t_d:
-                legs.append(('rest', T - min(14, t_d), T))
-                T -= min(14, t_d)
+                legs.append(('wait', T - min(14, T - t_d), T))
+                T -= min(14, T - t_d)
 
     return T, legs
 
