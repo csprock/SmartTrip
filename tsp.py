@@ -18,30 +18,156 @@ def compute_arrival_time(ts, i):
     assert 0 <= i < ts.N_STOPS
 
     if ts.TRAVEL_TIMES[i] <= ts.remDrive_d[i + 1]:
-
         ts.t_a[i] = ts.t_d[i + 1] - ts.TRAVEL_TIMES[i]
         ts.remDrive_a[i] = ts.remDrive_d[i + 1] - ts.TRAVEL_TIMES[i]
         ts.remDuty_a[i] = ts.remDuty_d[i + 1] - ts.TRAVEL_TIMES[i]
         ts.slack_a[i] = ts.slack_d[i + 1]
 
-        #print(" travel time <= remDrive")
-        #print_report(ts, i)
-
     else:
-
         ts.nRests_between[i] = 1 + math.floor((ts.TRAVEL_TIMES[i] - ts.remDrive_d[i + 1]) / ts.DRIVE)
         ts.t_a[i] = ts.t_d[i + 1] - (ts.TRAVEL_TIMES[i] + ts.nRests_between[i] * ts.REST)
         ts.slack_a[i] = ts.slack_d[i + 1] + (ts.remDuty_d[i + 1] - ts.remDrive_d[i + 1]) + (ts.nRests_between[i] - 1) * (ts.DUTY - ts.DRIVE)
         ts.remDuty_a[i] = ts.DUTY - ((ts.TRAVEL_TIMES[i] - ts.remDrive_d[i + 1]) % ts.DRIVE)
         ts.remDrive_a[i] = ts.DRIVE - ((ts.TRAVEL_TIMES[i] - ts.remDrive_d[i + 1]) % ts.DRIVE)
 
-        #print(" travel time > remDrive")
-        #print_report(ts, i)
-
     return ts
 
 
 # TODO: set shadow variables to normal ones for non-slack branches
+def analyze_arrival_info(ts, i, debug=False):
+    #### Phase II: analyze arrival time ####
+
+    # dispatch window violation
+    if ts.t_a[i] < ts.WINDOWS[i].e:
+
+        # Branch A
+        print("Location: {}, Branch: {}".format(i, "A"))
+
+        return False, i, ts
+
+    else:
+
+        if ts.WINDOWS[i].e <= ts.t_a[i] <= ts.WINDOWS[i].l:
+
+            # Branch B
+            print("Location: {}, Branch: {}".format(i, "B"))
+
+            ts.slack_d[i] = min(ts.slack_a[i], ts.t_a[i] - ts.WINDOWS[i].e)
+            ts.t_d[i] = copy(ts.t_a[i])
+            ts.remDrive_d[i] = ts.remDrive_a[i]
+            ts.remDuty_d[i] = ts.remDuty_a[i]
+
+            if debug:
+                print("Branch: B")
+                print_report(i)
+
+
+        else:
+
+            ts.tBest[i] = ts.t_a[i] - ts.slack_a[i] - ts.remDuty_a[i]
+
+            if ts.tBest[i] > ts.WINDOWS[i].l:
+
+                ts.nRests[i] = math.ceil((ts.tBest[i] - ts.WINDOWS[i].l) / (ts.DRIVE + ts.DUTY))
+                ts.wait[i] = max(ts.t_a[i] - ts.WINDOWS[i].l - ts.nRests[i] * ts.REST, 0)
+
+                if ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY) < ts.WINDOWS[i].l:
+
+                    if ts.t_a[i] - ts.REST < ts.WINDOWS[i].l:
+
+                        # time window violation
+                        if ts.t_a[i] - ts.REST < ts.WINDOWS[i].e:
+                            print("Location: {}, Branch: {}".format(i, "G"))
+                            return False, i, ts
+
+                        else:
+
+                            print("Location: {}, Branch: {}".format(i, "H"))
+
+                            ts.t_d[i] = ts.t_a[i] - ts.REST
+                            ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].e, (ts.t_d[i] - (
+                                        ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY))))
+                            ts.remDuty_d[i] = ts.DUTY
+                            ts.remDrive_d[i] = ts.DRIVE
+                            # adjust previous
+                            ts.t_d_shadow[i + 1] = ts.t_d[i + 1] - ts.slack_a[i]
+                            ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
+
+                    else:
+
+                        print("Location: {}, Branch: {}".format(i, "F"))
+
+                        ts.t_d[i] = ts.WINDOWS[i].l
+                        ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].e, (ts.t_d[i] - (
+                                    ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY))))
+                        ts.remDuty_d[i] = ts.DUTY
+                        ts.remDrive_d[i] = ts.DRIVE
+                        # adjust previous
+                        ts.t_d_shadow[i + 1] = ts.t_d[i + 1] - ts.slack_a[i]
+                        ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
+
+                else:
+
+                    print("Location: {}, Branch: {}".format(i, "E"))
+
+                    # adjust previous departure time
+                    ts.t_d_shadow[i + 1] = ts.t_d[i + 1] - ts.slack_a[i]
+                    ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
+
+                    ts.t_d[i] = ts.WINDOWS[i].l
+                    ts.remDuty_d[i] = ts.DUTY - (
+                                (ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY)) - ts.WINDOWS[
+                            i].l)
+                    ts.remDrive_d[i] = min(ts.remDuty_d[i], ts.DRIVE)
+                    ts.slack_d[i] = 0
+
+            else:
+
+                ts.wait[i] = ts.t_a[i] - ts.WINDOWS[i].l
+
+                # TODO: worked, check algo
+                if ts.wait[i] > ts.slack_a[i]:
+
+                    # Branch C
+
+                    print("Location: {}, Branch: {}".format(i, "C"))
+
+                    # adjust previous departure time
+                    ts.t_d_shadow[i + 1] = ts.t_d[i + 1] - ts.slack_a[i]
+                    ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
+
+                    ts.slack_d[i] = 0
+                    ts.remDuty_d[i] = ts.remDuty_a[i] - (ts.wait[i] - ts.slack_a[i])  # - wait[i] - slack_a[i]
+                    ts.remDrive_d[i] = min(ts.remDrive_a[i], ts.remDuty_d[i])
+                    ts.t_d[i] = ts.WINDOWS[i].l
+
+                    if debug:
+                        print("Branch: C")
+                        print_report(i)
+
+                else:
+
+                    # Branch D
+                    print("Location: {}, Branch: {}".format(i, "D"))
+
+                    ts.slack_d[i] = min(ts.slack_a[i] - ts.wait[i], ts.WINDOWS[i].delta)
+
+                    # adjust previous departure time
+                    ts.t_d_shadow[i + 1] = ts.t_d[i + 1] - ts.slack_a[i]
+                    ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
+
+                    ts.remDuty_d[i] = ts.remDuty_a[i]
+                    ts.remDrive_d[i] = ts.remDrive_a[i]
+                    ts.t_d[i] = ts.WINDOWS[i].l
+
+                    if debug:
+                        print("Branch: D")
+                        print_report(i)
+
+
+    return ts
+
+
 def backwards_search(ts, k, j, debug=False):
 
     for i in reversed(range(j, k+1)):
@@ -50,132 +176,8 @@ def backwards_search(ts, k, j, debug=False):
         ts = compute_arrival_time(ts, i)
 
         #### Phase II: analyze arrival time ####
+        ts = analyze_arrival_info(ts, i, debug=debug)
 
-        # dispatch window violation
-        if ts.t_a[i] < ts.WINDOWS[i].e:
-
-            # Branch A
-            print("Location: {}, Branch: {}".format(i, "A"))
-
-            return False, i, ts
-
-        else:
-
-            if ts.WINDOWS[i].e <= ts.t_a[i] <= ts.WINDOWS[i].l:
-
-                # Branch B
-                print("Location: {}, Branch: {}".format(i, "B"))
-
-                ts.slack_d[i] = min(ts.slack_a[i], ts.t_a[i] - ts.WINDOWS[i].e)
-                ts.t_d[i] = copy(ts.t_a[i])
-                ts.remDrive_d[i] = ts.remDrive_a[i]
-                ts.remDuty_d[i] = ts.remDuty_a[i]
-
-
-                if debug:
-                    print("Branch: B")
-                    print_report(i)
-
-
-            else:
-
-                ts.tBest[i] = ts.t_a[i] - ts.slack_a[i] - ts.remDuty_a[i]
-
-                if ts.tBest[i] > ts.WINDOWS[i].l:
-
-                    ts.nRests[i] = math.ceil((ts.tBest[i] - ts.WINDOWS[i].l)/(ts.DRIVE + ts.DUTY))
-                    ts.wait[i] = max(ts.t_a[i] - ts.WINDOWS[i].l - ts.nRests[i]*ts.REST, 0)
-
-                    if ts.tBest[i] - (ts.nRests[i]*ts.REST + (ts.nRests[i] - 1)*ts.DUTY) < ts.WINDOWS[i].l:
-
-                        if ts.t_a[i] - ts.REST < ts.WINDOWS[i].l:
-
-                            # time window violation
-                            if ts.t_a[i] - ts.REST < ts.WINDOWS[i].e:
-                                print("Location: {}, Branch: {}".format(i, "G"))
-                                return False, i, ts
-
-                            else:
-
-                                print("Location: {}, Branch: {}".format(i, "H"))
-
-                                ts.t_d[i] = ts.t_a[i] - ts.REST
-                                ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].e, (ts.t_d[i] - (ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY))))
-                                ts.remDuty_d[i] = ts.DUTY
-                                ts.remDrive_d[i] = ts.DRIVE
-                                # adjust previous
-                                ts.t_d_shadow[i + 1] = ts.t_d[i+1] - ts.slack_a[i]
-                                ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
-
-                        else:
-
-                            print("Location: {}, Branch: {}".format(i, "F"))
-
-                            ts.t_d[i] = ts.WINDOWS[i].l
-                            ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].e, (ts.t_d[i] - (ts.tBest[i] - (ts.nRests[i]*ts.REST + (ts.nRests[i] - 1)*ts.DUTY))))
-                            ts.remDuty_d[i] = ts.DUTY
-                            ts.remDrive_d[i] = ts.DRIVE
-                            # adjust previous
-                            ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
-                            ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
-
-                    else:
-
-                        print("Location: {}, Branch: {}".format(i, "E"))
-
-                        # adjust previous departure time
-                        ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
-                        ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
-
-                        ts.t_d[i] = ts.WINDOWS[i].l
-                        ts.remDuty_d[i] = ts.DUTY - ((ts.tBest[i] - (ts.nRests[i]*ts.REST + (ts.nRests[i] - 1)*ts.DUTY)) - ts.WINDOWS[i].l)
-                        ts.remDrive_d[i] = min(ts.remDuty_d[i], ts.DRIVE)
-                        ts.slack_d[i] = 0
-
-                else:
-
-                    ts.wait[i] = ts.t_a[i] - ts.WINDOWS[i].l
-
-                    # TODO: worked, check algo
-                    if ts.wait[i] > ts.slack_a[i]:
-
-                        # Branch C
-
-                        print("Location: {}, Branch: {}".format(i, "C"))
-
-                        # adjust previous departure time
-                        ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
-                        ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
-
-                        ts.slack_d[i] = 0
-                        ts.remDuty_d[i] = ts.remDuty_a[i] - (ts.wait[i] - ts.slack_a[i])#- wait[i] - slack_a[i]
-                        ts.remDrive_d[i] = min(ts.remDrive_a[i], ts.remDuty_d[i])
-                        ts.t_d[i] = ts.WINDOWS[i].l
-
-
-                        if debug:
-                            print("Branch: C")
-                            print_report(i)
-
-                    else:
-
-                        # Branch D
-                        print("Location: {}, Branch: {}".format(i, "D"))
-
-                        ts.slack_d[i] = min(ts.slack_a[i] - ts.wait[i], ts.WINDOWS[i].delta)
-
-                        # adjust previous departure time
-                        ts.t_d_shadow[i+1] = ts.t_d[i+1] - ts.slack_a[i]
-                        ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
-
-
-                        ts.remDuty_d[i] = ts.remDuty_a[i]
-                        ts.remDrive_d[i] = ts.remDrive_a[i]
-                        ts.t_d[i] = ts.WINDOWS[i].l
-
-                        if debug:
-                            print("Branch: D")
-                            print_report(i)
     return True, i, ts
 
 
