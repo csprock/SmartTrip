@@ -1,7 +1,8 @@
 import math
 from copy import copy
 
-
+class DispatchWindowViolation(Exception):
+    pass
 
 def print_report(ts, i):
 
@@ -42,8 +43,8 @@ def analyze_arrival_info(ts, i, debug=False):
 
         # Branch A
         print("Location: {}, Branch: {}".format(i, "A"))
-
-        return False, i, ts
+        raise DispatchWindowViolation
+        #return False, i, ts
 
     else:
 
@@ -115,9 +116,7 @@ def analyze_arrival_info(ts, i, debug=False):
                     ts.t_a_shadow[i] = ts.t_a[i] - ts.slack_a[i]
 
                     ts.t_d[i] = ts.WINDOWS[i].l
-                    ts.remDuty_d[i] = ts.DUTY - (
-                                (ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY)) - ts.WINDOWS[
-                            i].l)
+                    ts.remDuty_d[i] = ts.DUTY - ((ts.tBest[i] - (ts.nRests[i] * ts.REST + (ts.nRests[i] - 1) * ts.DUTY)) - ts.WINDOWS[i].l)
                     ts.remDrive_d[i] = min(ts.remDuty_d[i], ts.DRIVE)
                     ts.slack_d[i] = 0
 
@@ -164,7 +163,6 @@ def analyze_arrival_info(ts, i, debug=False):
                         print("Branch: D")
                         print_report(i)
 
-
     return ts
 
 
@@ -176,7 +174,10 @@ def backwards_search(ts, k, j, debug=False):
         ts = compute_arrival_time(ts, i)
 
         #### Phase II: analyze arrival time ####
-        ts = analyze_arrival_info(ts, i, debug=debug)
+        try:
+            ts = analyze_arrival_info(ts, i, debug=debug)
+        except DispatchWindowViolation:
+            return False, i, ts
 
     return True, i, ts
 
