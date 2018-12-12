@@ -118,6 +118,37 @@ class TestAnalyzeArrivalInfo(unittest.TestCase):
         self.assertEqual(ts.remDrive_d[0], 6)
         self.assertEqual(ts.wait[0], 40)
 
+    def test_BranchF(self):
+
+        time_windows = [TimeWindow(70, 80),
+                        TimeWindow(100, 100)]
+
+        travel_times = (10,)
+
+        ts = TripStats(time_windows=time_windows, travel_times=travel_times)
+
+        i = 0
+
+        ts.t_a[i] = 90
+        ts.slack_a[i] = 0
+        ts.remDrive_a[i] = 1
+        ts.remDuty_a[i] = 4
+
+        ts.t_d[i+1] = 100
+
+        ts = analyze_arrival_info(ts, i)
+
+        self.assertEqual(ts.nRests[i], 1)
+        self.assertEqual(ts.t_d[i], 80)
+        self.assertEqual(ts.tBest[i], 86)
+        self.assertEqual(ts.slack_d[i], 4)
+        self.assertEqual(ts.remDuty_d[i], 14)
+        self.assertEqual(ts.remDrive_d[i], 11)
+        self.assertEqual(ts.wait[i], 0)
+
+        self.assertEqual(ts.t_d_shadow[i+1],100)
+        self.assertEqual(ts.t_a_shadow[i], 90)
+
 
 
 
