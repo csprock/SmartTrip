@@ -1,8 +1,7 @@
 import math
 from copy import copy
+from utils import DispatchWindowViolation
 
-class DispatchWindowViolation(Exception):
-    pass
 
 def print_report(ts, i):
 
@@ -79,7 +78,7 @@ def analyze_arrival_info(ts, i, debug=False):
                         # time window violation
                         if ts.t_a[i] - ts.REST < ts.WINDOWS[i].e:
                             print("Location: {}, Branch: {}".format(i, "G"))
-                            return False, i, ts
+                            raise DispatchWindowViolation
 
                         else:
 

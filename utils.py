@@ -1,6 +1,10 @@
 from array import array
 import pandas as pd
 
+class DispatchWindowViolation(Exception):
+    pass
+
+
 class TripInterval:
 
     def __init__(self, type, start, end):
@@ -127,7 +131,7 @@ class TripStats:
 def construct_trip(ts):
 
     legs = list()
-    last_stop = len(ts.N_STOPS) - 1
+    last_stop = ts.N_STOPS - 1
 
     T = ts.t_a[-1]
 

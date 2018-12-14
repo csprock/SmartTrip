@@ -3,7 +3,7 @@ import sys
 sys.path.append('..')
 
 from tsp import compute_arrival_time, analyze_arrival_info
-from utils import TripStats, TimeWindow
+from utils import TripStats, TimeWindow, DispatchWindowViolation
 from examples import AuthorsExample
 
 class TestComputeArrivalTime(unittest.TestCase):
@@ -149,6 +149,58 @@ class TestAnalyzeArrivalInfo(unittest.TestCase):
         self.assertEqual(ts.t_d_shadow[i+1],100)
         self.assertEqual(ts.t_a_shadow[i], 90)
 
+    def test_BranchH(self):
+
+        time_windows = [TimeWindow(70, 81),
+                        TimeWindow(100, 100)]
+
+        travel_times = (10,)
+
+        ts = TripStats(time_windows=time_windows, travel_times=travel_times)
+
+        i = 0
+
+        ts.t_a[i] = 90
+        ts.slack_a[i] = 0
+        ts.remDrive_a[i] = 1
+        ts.remDuty_a[i] = 4
+
+        ts.t_d[i+1] = 100
+
+        ts = analyze_arrival_info(ts, i)
+
+        self.assertEqual(ts.nRests[i], 1)
+        self.assertEqual(ts.t_d[i], 80)
+        self.assertEqual(ts.tBest[i], 86)
+        self.assertEqual(ts.slack_d[i], 4)
+        self.assertEqual(ts.remDuty_d[i], 14)
+        self.assertEqual(ts.remDrive_d[i], 11)
+        self.assertEqual(ts.wait[i], 0)
+
+        self.assertEqual(ts.t_d_shadow[i+1], 100)
+        self.assertEqual(ts.t_a_shadow[i], 90)
+
+
+    def test_BranchG(self):
+
+        time_windows = [TimeWindow(81, 81),
+                        TimeWindow(100, 100)]
+
+        travel_times = (10,)
+
+        ts = TripStats(time_windows=time_windows, travel_times=travel_times)
+
+        i = 0
+
+        ts.t_a[i] = 90
+        ts.slack_a[i] = 0
+        ts.remDrive_a[i] = 1
+        ts.remDuty_a[i] = 4
+
+        ts.t_d[i+1] = 100
+
+        with self.assertRaises(DispatchWindowViolation):
+            _ = analyze_arrival_info(ts, i)
 
 
 
