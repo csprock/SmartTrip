@@ -105,6 +105,8 @@ class TripStats:
         self.remDuty_d[-1] = self.DUTY
         self.t_a[-1] = self.WINDOWS[-1].l
 
+        self.last_stop = len(time_windows) - 1
+
     def _report(self):
 
         df = pd.DataFrame([self.t_a,
@@ -141,6 +143,9 @@ def construct_trip(ts):
 
     for i in reversed(range(ts.N_STOPS - 1)):
 
+        if i == ts.last_stop - 2:
+            return T, legs
+
         T, legs, last_stop = drive(T, legs, last_stop, ts.nRests_between[i], ts.t_a[i], ts.remDrive_d[i+1])
 
         if ts.wait[i] and ts.nRests[i]:
@@ -157,10 +162,10 @@ def construct_trip(ts):
 
     return T, legs
 
-
 def drive(T, legs, last_stop, nRests_between, t_a, remDrive_d):
 
     if remDrive_d < T - t_a and nRests_between == 0:
+        # TODO: create custom error message or move message outside of function
         msg = '''
         Remaining drive time {} less than time to destination {}, but 0 rests were given.
         '''.format(remDrive_d, T - t_a)
@@ -183,7 +188,7 @@ def drive(T, legs, last_stop, nRests_between, t_a, remDrive_d):
 
     last_stop -= 1
 
-    return T, legs, last_stop
+    return T, legs
 
 def wait_no_rest(T, legs, t_d, t_a):
 
