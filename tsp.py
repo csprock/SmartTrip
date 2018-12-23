@@ -34,6 +34,7 @@ def compute_arrival_time(ts, i):
 
 
 # TODO: set shadow variables to normal ones for non-slack branches
+# TODO: need to update drive and duty times for slack-adjusted breaks
 def analyze_arrival_info(ts, i, debug=False):
     #### Phase II: analyze arrival time ####
 
@@ -161,6 +162,8 @@ def analyze_arrival_info(ts, i, debug=False):
                     if debug:
                         print("Branch: D")
                         print_report(i)
+
+    ts.last_stop = i
 
     return ts
 

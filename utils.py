@@ -129,7 +129,8 @@ class TripStats:
         rpt = self._report()
         with pd.option_context('display.max_rows', rpt.shape[0], 'display.max_columns', rpt.shape[1]):
             print(rpt)
-# TODO replace hardcoded constants with TripStats constants
+
+# TODO move into TripStats class
 def construct_trip(ts):
 
     legs = list()
@@ -146,7 +147,8 @@ def construct_trip(ts):
         if i == ts.last_stop - 2:
             return T, legs
 
-        T, legs, last_stop = drive(T, legs, last_stop, ts.nRests_between[i], ts.t_a[i], ts.remDrive_d[i+1])
+        T, legs = drive(T, legs, last_stop, ts.nRests_between[i], ts.t_a[i], ts.remDrive_d[i+1])
+        last_stop -= 1
 
         if ts.wait[i] and ts.nRests[i]:
             if i in ts.rest_push_end:
@@ -164,16 +166,8 @@ def construct_trip(ts):
 
 def drive(T, legs, last_stop, nRests_between, t_a, remDrive_d):
 
-    if remDrive_d < T - t_a and nRests_between == 0:
-        # TODO: create custom error message or move message outside of function
-        msg = '''
-        Remaining drive time {} less than time to destination {}, but 0 rests were given.
-        '''.format(remDrive_d, T - t_a)
-        raise ValueError(msg)
-
-    if T - t_a > remDrive_d + nRests_between*10 + max(0, (nRests_between - 1)*11) + 11:
-        # TODO: add message
-        raise ValueError
+    assert remDrive_d >= T - t_a or nRests_between > 0
+    assert T - t_a <= remDrive_d + nRests_between*10 + max(0, (nRests_between - 1)*11) + 11
 
     if remDrive_d > 0:
         legs.append(('drive', T - min(11, remDrive_d, T - t_a), T, last_stop))
@@ -186,9 +180,8 @@ def drive(T, legs, last_stop, nRests_between, t_a, remDrive_d):
             legs.append(('drive', T - min(11, T - t_a), T, last_stop))
             T -= min(11, T - t_a)
 
-    last_stop -= 1
-
     return T, legs
+
 
 def wait_no_rest(T, legs, t_d, t_a):
 
@@ -201,6 +194,7 @@ def wait_no_rest(T, legs, t_d, t_a):
 
     return T, legs
 
+
 def rest_no_wait(T, legs, nRests):
 
     assert nRests > 0
@@ -210,6 +204,7 @@ def rest_no_wait(T, legs, nRests):
         T -= 10
 
     return T, legs
+
 
 def pushed_up_rests_with_wait(T, legs, nRests, t_d, remDuty_d, wait):
 
@@ -239,6 +234,7 @@ def pushed_up_rests_with_wait(T, legs, nRests, t_d, remDuty_d, wait):
                 T -= min(14, T - t_d)
 
     return T, legs
+
 
 def rests_with_waits(T, legs, nRests, t_d, remDuty_a, wait):
 
