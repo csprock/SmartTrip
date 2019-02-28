@@ -4,7 +4,6 @@ import pandas as pd
 class DispatchWindowViolation(Exception):
     pass
 
-
 class TripInterval:
 
     def __init__(self, type, start, end):
@@ -15,39 +14,6 @@ class TripInterval:
         self.start = start
         self.end = end
         self.duration = end - start
-
-
-def check_trip_sequence(seq):
-    # TODO: return reason and index of failures
-    duty_limit = 14
-    drive_limit = 11
-    rest_limit = 8
-
-    duty_clock = 0
-    drive_clock = 0
-
-    for s, i in enumerate(seq):
-
-        if s.type == 'drive':
-            drive_clock += s.duration
-            duty_clock += s.duration
-            if drive_clock > drive_limit or duty_clock > duty_limit:
-                return False
-
-        if s.type == 'duty':
-            duty_clock += s.duration
-            if duty_clock > duty_limit:
-                return False
-
-        if s.type == 'rest':
-
-            if s.duration == rest_limit:
-                duty_clock = 0
-                drive_clock = 0
-            else:
-                return False
-
-    return True
 
 
 class TimeWindow:
@@ -107,9 +73,9 @@ class TripStats:
 
         self.last_stop = len(time_windows) - 1
 
-    def _report(self):
+    def get_report(self):
 
-        df = pd.DataFrame([self.t_a,
+        self.df = pd.DataFrame([self.t_a,
                            self.slack_a,
                            self.remDrive_a,
                            self.remDuty_a,
@@ -119,16 +85,23 @@ class TripStats:
                            self.remDrive_d,
                            self.remDuty_d,
                            self.wait,
-                           self.nRests]).T
-        df.columns = ['t_a','slack_a','remDrive_a','remDuty_a','tBest','t_d','slack_d','remDrive_d','remDuty_d','wait','nRests']
-        df.sort_index(ascending=False, inplace=True)
-        return df
+                           self.nRests,
+                           self.t_a_shadow,
+                           self.t_d_shadow]).T
+        self.df.columns = ['t_a','slack_a','remDrive_a','remDuty_a','tBest','t_d','slack_d','remDrive_d','remDuty_d','wait','nRests', 't_a_shadow', 't_d_shadow']
+        self.df.sort_index(ascending=False, inplace=True)
+        return self.df
 
     def print_report(self):
 
-        rpt = self._report()
+        rpt = self.get_report()
         with pd.option_context('display.max_rows', rpt.shape[0], 'display.max_columns', rpt.shape[1]):
             print(rpt)
+
+
+###########################################
+##### Trip reconstruction functions #######
+###########################################
 
 # TODO move into TripStats class
 def construct_trip(ts):
@@ -163,6 +136,7 @@ def construct_trip(ts):
             pass
 
     return T, legs
+
 
 def drive(T, legs, last_stop, nRests_between, t_a, remDrive_d):
 
@@ -252,3 +226,36 @@ def rests_with_waits(T, legs, nRests, t_d, remDuty_a, wait):
             T -= min(14, T - t_d)
 
     return T, legs
+
+
+def check_trip_sequence(seq):
+    # TODO: return reason and index of failures
+    duty_limit = 14
+    drive_limit = 11
+    rest_limit = 8
+
+    duty_clock = 0
+    drive_clock = 0
+
+    for s, i in enumerate(seq):
+
+        if s.type == 'drive':
+            drive_clock += s.duration
+            duty_clock += s.duration
+            if drive_clock > drive_limit or duty_clock > duty_limit:
+                return False
+
+        if s.type == 'duty':
+            duty_clock += s.duration
+            if duty_clock > duty_limit:
+                return False
+
+        if s.type == 'rest':
+
+            if s.duration == rest_limit:
+                duty_clock = 0
+                drive_clock = 0
+            else:
+                return False
+
+    return True
