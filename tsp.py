@@ -2,16 +2,16 @@ import math
 from copy import copy
 from utils import DispatchWindowViolation
 
+import logging
 
-def print_report(ts, i):
-
-
-    arrive_message = '''
-    At location {}: \n \t Arrival: t: {}, slack: {}, remDrive: {}, remDuty: {} \n \t Depart: tBest: {}, t: {}, slack: {}, remDrive: {}, remDuty: {}, wait: {}
-    '''.format(i, ts.t_a[i], ts.slack_a[i], ts.remDrive_a[i], ts.remDuty_a[i], ts.tBest[i], ts.t_d[i], ts.slack_d[i], ts.remDrive_d[i], ts.remDuty_d[i], ts.wait[i])
-    print(arrive_message)
-    print('------')
-
+# LOGGER = logging.getLogger(__name__)
+#
+# handler = logging.StreamHandler()
+# handler.setLevel(logging.INFO)
+# formatter = logging.Formatter("[%(funcName)s] - %(message)")
+# handler.setFormatter(formatter)
+# LOGGER.addHandler(handler)
+# LOGGER.setLevel(logging.INFO)
 
 def compute_arrival_time(ts, i):
 
@@ -34,15 +34,16 @@ def compute_arrival_time(ts, i):
 
 
 # TODO: set shadow variables to normal ones for non-slack branches
-# TODO: need to update drive and duty times for slack-adjusted breaks
-def analyze_arrival_info(ts, i, debug=False):
+# TODO identify where slack is being updating in the pass-thru scenario
+def analyze_arrival_info(ts, i):
+
     #### Phase II: analyze arrival time ####
 
     # dispatch window violation
     if ts.t_a[i] < ts.WINDOWS[i].e:
 
         # Branch A
-        print("Location: {}, Branch: {}".format(i, "A"))
+        #LOGGER.info("Location: {}, Branch: {}".format(i, "A"))
         raise DispatchWindowViolation
         #return False, i, ts
 
@@ -51,17 +52,12 @@ def analyze_arrival_info(ts, i, debug=False):
         if ts.WINDOWS[i].e <= ts.t_a[i] <= ts.WINDOWS[i].l:
 
             # Branch B
-            print("Location: {}, Branch: {}".format(i, "B"))
+            #LOGGER.info("Location: {}, Branch: {}".format(i, "B"))
 
             ts.slack_d[i] = min(ts.slack_a[i], ts.t_a[i] - ts.WINDOWS[i].e)
             ts.t_d[i] = copy(ts.t_a[i])
             ts.remDrive_d[i] = ts.remDrive_a[i]
             ts.remDuty_d[i] = ts.remDuty_a[i]
-
-            if debug:
-                print("Branch: B")
-                print_report(i)
-
 
         else:
 
@@ -78,12 +74,12 @@ def analyze_arrival_info(ts, i, debug=False):
 
                         # time window violation
                         if ts.t_a[i] - ts.REST < ts.WINDOWS[i].e:
-                            print("Location: {}, Branch: {}".format(i, "G"))
+                            #LOGGER.info("Location: {}, Branch: {}".format(i, "G"))
                             raise DispatchWindowViolation
 
                         else:
 
-                            print("Location: {}, Branch: {}".format(i, "H"))
+                            #LOGGER.info("Location: {}, Branch: {}".format(i, "H"))
 
                             ts.t_d[i] = ts.t_a[i] - ts.REST
                             ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].e, (ts.t_d[i] - (
@@ -96,7 +92,7 @@ def analyze_arrival_info(ts, i, debug=False):
 
                     else:
 
-                        print("Location: {}, Branch: {}".format(i, "F"))
+                        #LOGGER.info("Location: {}, Branch: {}".format(i, "F"))
 
                         ts.t_d[i] = ts.WINDOWS[i].l
                         ts.slack_d[i] = min(ts.t_d[i] - ts.WINDOWS[i].e, (ts.t_d[i] - (
@@ -109,7 +105,7 @@ def analyze_arrival_info(ts, i, debug=False):
 
                 else:
 
-                    print("Location: {}, Branch: {}".format(i, "E"))
+                    #LOGGER.info("Location: {}, Branch: {}".format(i, "E"))
 
                     # adjust previous departure time
                     ts.t_d_shadow[i + 1] = ts.t_d[i + 1] - ts.slack_a[i]
@@ -124,12 +120,11 @@ def analyze_arrival_info(ts, i, debug=False):
 
                 ts.wait[i] = ts.t_a[i] - ts.WINDOWS[i].l
 
-                # TODO: worked, check algo
                 if ts.wait[i] > ts.slack_a[i]:
 
                     # Branch C
 
-                    print("Location: {}, Branch: {}".format(i, "C"))
+                    #LOGGER.info("Location: {}, Branch: {}".format(i, "C"))
 
                     # adjust previous departure time
                     ts.t_d_shadow[i + 1] = ts.t_d[i + 1] - ts.slack_a[i]
@@ -140,14 +135,11 @@ def analyze_arrival_info(ts, i, debug=False):
                     ts.remDrive_d[i] = min(ts.remDrive_a[i], ts.remDuty_d[i])
                     ts.t_d[i] = ts.WINDOWS[i].l
 
-                    if debug:
-                        print("Branch: C")
-                        print_report(i)
 
                 else:
 
                     # Branch D
-                    print("Location: {}, Branch: {}".format(i, "D"))
+                    #LOGGER.info("Location: {}, Branch: {}".format(i, "D"))
 
                     ts.slack_d[i] = min(ts.slack_a[i] - ts.wait[i], ts.WINDOWS[i].delta)
 
@@ -158,10 +150,6 @@ def analyze_arrival_info(ts, i, debug=False):
                     ts.remDuty_d[i] = ts.remDuty_a[i]
                     ts.remDrive_d[i] = ts.remDrive_a[i]
                     ts.t_d[i] = ts.WINDOWS[i].l
-
-                    if debug:
-                        print("Branch: D")
-                        print_report(i)
 
     ts.last_stop = i
 
@@ -177,7 +165,7 @@ def backwards_search(ts, k, j, debug=False):
 
         #### Phase II: analyze arrival time ####
         try:
-            ts = analyze_arrival_info(ts, i, debug=debug)
+            ts = analyze_arrival_info(ts, i)
         except DispatchWindowViolation:
             return False, i, ts
 
@@ -227,10 +215,36 @@ def push_up_nearest_rest(ts, i, j):
 
     return ts
 
+def analyze_rest(ts, j):
 
+    if ts.t_a[j] - (ts.nRests[j] * ts.REST) <= ts.WINDOWS[j].l:
+
+        # Branch B
+        #LOGGER.info("In Branch B at location {}".format(j))
+
+        ts.t_d[j] = ts.t_a[j] - ts.nRests[j] * ts.REST
+        ts.remDuty_d[j] = ts.DUTY
+        ts.remDrive_d[j] = ts.DRIVE
+        ts.wait[j] = 0
+        ts.slack_d[j] = min(ts.t_d[j] - ts.WINDOWS[j].e, ts.slack_a[j] + ts.remDuty_a[j] + (ts.nRests[j] - 1) * ts.REST)
+
+
+    else:
+
+        #LOGGER.info("In Branch A at location {}".format(j))
+
+        ts.t_d[j] = ts.WINDOWS[j].l
+        ts.remDuty_d[j] = ts.DUTY
+        ts.remDrive_d[j] = ts.DRIVE
+        ts.wait[j] = ts.t_a[j] - ts.nRests[j] * ts.REST - ts.WINDOWS[j].l
+        ts.slack_d[j] = min(ts.WINDOWS[j].delta, ts.slack_a[j] + ts.remDuty_a[j] + (ts.nRests[j] - 1) * ts.REST - (
+                    ts.t_a[j] - ts.nRests[j] * ts.REST - ts.WINDOWS[j].l))
+
+    return ts
+
+
+# TODO: refactor logic in main look into separate function
 def restore(ts, i, debug=False):
-
-    #global nRests, nRests_between, remDuty_a, remDuty_d, remDrive_d, remDrive_a, t_a, t_d, slack_a, slack_d, wait, tBest, rest_push_end
 
     #N = 6 # for testing only
     for j in range(i+1, ts.N_STOPS):
@@ -239,50 +253,24 @@ def restore(ts, i, debug=False):
         #print("Rests between {} and {}: {}, waits at {}: {}".format(i,j, nRests_ij, j, wait[j]))
 
         if ts.wait[j] > 0 and nRests_ij > 0:
-            #print_report(j)
+
             ts.nRests[j] += 1
 
             ts = push_up_nearest_rest(ts, i, j)
-            ts.rest_push_end.append(j)
+            ts.rest_push_end.append(j) # TODO: reset if backwards search fails
 
             #print("Rest push end: {}".format(rest_push_end))
 
             if ts.t_a[j] - ts.nRests[j]*ts.REST >= ts.WINDOWS[j].e:
 
-                if ts.t_a[j] - (ts.nRests[j]*ts.REST) <= ts.WINDOWS[j].l:
+                ts = analyze_rest(ts, j)
 
-                    # Branch B
 
-                    ts.t_d[j] = ts.t_a[j] - ts.nRests[j]*ts.REST
-                    ts.remDuty_d[j] = ts.DUTY
-                    ts.remDrive_d[j] = ts.DRIVE
-                    ts.wait[j] = 0
-                    ts.slack_d[j] = min(ts.t_d[j] - ts.WINDOWS[j].e, ts.slack_a[j] + ts.remDuty_a[j] + (ts.nRests[j] - 1)*ts.REST)
-
-                    if debug:
-                        pass
-                        #print("In Branch B at location {}".format(j))
-                        #print_report(j)
-                else:
-
-                    # Branch A
-
-                    ts.t_d[j] = ts.WINDOWS[j].l
-                    ts.remDuty_d[j] = ts.DUTY
-                    ts.remDrive_d[j] = ts.DRIVE
-                    ts.wait[j] = ts.t_a[j] - ts.nRests[j]*ts.REST - ts.WINDOWS[j].l
-                    ts.slack_d[j] = min(ts.WINDOWS[j].delta, ts.slack_a[j] + ts.remDuty_a[j] + (ts.nRests[j] -1)*ts.REST - (ts.t_a[j] - ts.nRests[j]*ts.REST - ts.WINDOWS[j].l))
-
-                    if debug:
-                        #print("In Branch A at location {}".format(j))
-                        print_report(j)
-
-            #print("In backwards search from {} to {}".format(j-1, i))
+            #LOGGER.info("In backwards search from {} to {}".format(j-1, i))
             status, placeholder_i, ts = backwards_search(ts, j-1, i, debug=False)
-            #print("=========================")
 
             if ts.t_a[placeholder_i] >= ts.WINDOWS[placeholder_i].e: # before was i
-                print("Done!!")
+                #LOGGER.info("Done!")
                 return True, ts
 
             else:
@@ -293,27 +281,18 @@ def restore(ts, i, debug=False):
 
     return False, ts
 
-
-
 def smart_trip(ts):
 
     j = ts.N_STOPS - 2
-    print(j)
     while j > 0:
         status, i, ts = backwards_search(ts, j, 0)
-        print(i)
         if status:
             return True, ts
         else:
             restore_status, ts = restore(ts, i)
-            #print("restore called at {}".format(i))
         if restore_status:
             j = i - 1
         else:
             return False, ts
 
     return True, ts
-
-
-
-
