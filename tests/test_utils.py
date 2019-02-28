@@ -172,14 +172,14 @@ class TestDrive(unittest.TestCase):
     def test_scenario_3a(self):
 
         # TODO: create regex match and use assertRaisesRegex
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
 
             _, _ = drive(**self.drive_senario_3a_input)
 
     def test_scenario_3b(self):
 
         # TODO: create regex match and use assertRaisesRegex
-        with self.assertRaises(ValueError):
+        with self.assertRaises(AssertionError):
 
             T, legs = drive(**self.drive_scenario_3b_input)
 

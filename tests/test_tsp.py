@@ -2,10 +2,11 @@ import unittest
 import sys
 sys.path.append('..')
 
-from tsp import compute_arrival_time, analyze_arrival_info
+from tsp import compute_arrival_time, analyze_arrival_info, smart_trip
 from utils import TripStats, TimeWindow, DispatchWindowViolation
-from examples import AuthorsExample
+from examples import AuthorsExample, ExampleA
 
+@unittest.skip("Skipping for now.")
 class TestComputeArrivalTime(unittest.TestCase):
 
     @classmethod
@@ -44,6 +45,7 @@ class TestComputeArrivalTime(unittest.TestCase):
         self.assertEqual(ts.remDuty_a[i], 4)
         self.assertEqual(ts.remDrive_a[i], 1)
 
+@unittest.skip("Skipping for now.")
 class TestAnalyzeArrivalInfo(unittest.TestCase):
 
 
@@ -202,7 +204,86 @@ class TestAnalyzeArrivalInfo(unittest.TestCase):
         with self.assertRaises(DispatchWindowViolation):
             _ = analyze_arrival_info(ts, i)
 
+class TestSmartTrip(unittest.TestCase):
 
+    def test_example_a(self):
+
+        time_windows = ExampleA.WINDOWS
+        travel_times = ExampleA.travel_times
+
+        ts = TripStats(time_windows=time_windows, travel_times=travel_times)
+
+        t_a = [100, 90, 61, 60, 40, 11]
+        remDrive_a = [float(), 1, 2, 1, 1, 2]
+        remDuty_a = [float(), 4, 5, 4, 4, 5]
+        slack_a = [0]*6
+        tBest = [float(), 86, 0, 56, 36, float()]
+
+        t_d = [100, 70, 61, 50, 20, 11]
+        slack_d = [0]*6
+        remDrive_d = [11, 11, 2, 11, 11, 2]
+        remDuty_d = [14, 14, 5, 14, 14, 5]
+        wait = [0]*6
+        rests = [0, 2, 0, 1, 2, float()]
+
+        status, ts = smart_trip(ts)
+
+        self.assertTrue(status)
+
+        for i, expected_value in enumerate(reversed(t_a)):
+
+            with self.subTest(variable="t_a", i=i):
+                self.assertEqual(expected_value, ts.t_a[i])
+
+        for i, expected_value in enumerate(reversed(slack_a)):
+
+            with self.subTest(variable="slack_a", i=i):
+                self.assertEqual(expected_value, ts.slack_a[i])
+
+        for i, expected_value in enumerate(reversed(remDrive_a)):
+
+            with self.subTest(variable="remDrive_a", i=i):
+                self.assertEqual(expected_value, ts.remDrive_a[i])
+
+        for i, expected_value in enumerate(reversed(remDuty_a)):
+
+            with self.subTest(variable="remDuty_a", i=i):
+                self.assertEqual(expected_value, ts.remDuty_a[i])
+
+        for i, expected_value in enumerate(reversed(tBest)):
+
+            with self.subTest(variable="tBest", i=i):
+                self.assertEqual(expected_value, ts.tBest[i])
+
+        for i, expected_value in enumerate(reversed(t_d)):
+
+            with self.subTest(variable="t_d", i=i):
+                self.assertEqual(expected_value, ts.t_d[i])
+
+        for i, expected_value in enumerate(reversed(slack_d)):
+
+            with self.subTest(variable="slack_d", i=i):
+                self.assertEqual(expected_value, ts.slack_d[i])
+
+        for i, expected_value in enumerate(reversed(remDrive_d)):
+
+            with self.subTest(variable="remDrive_d", i=i):
+                self.assertEqual(expected_value, ts.remDrive_d[i])
+
+        for i, expected_value in enumerate(reversed(remDuty_d)):
+
+            with self.subTest(variable="remDuty_d", i=i):
+                self.assertEqual(expected_value, ts.remDuty_d[i])
+
+        for i, expected_value in enumerate(reversed(wait)):
+
+            with self.subTest(variable="wait", i=i):
+                self.assertEqual(expected_value, ts.wait[i])
+
+        for i, expected_value in enumerate(reversed(rests)):
+
+            with self.subTest(variable="rests_between", i=i):
+                self.assertEqual(expected_value, ts.nRests[i])
 
 
 if __name__ == '__main__':
